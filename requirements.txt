@@ -1,3 +1,2 @@
 python-telegram-bot==20.3
 sqlalchemy==2.0.25
-python-dotenv==1.0.0
