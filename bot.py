@@ -1,22 +1,23 @@
 import os
 import json
+import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 
 # Токен бота из переменной окружения (настроим на Render)
 TOKEN = os.getenv('TOKEN')
-# URL приложения на Render (замени после деплоя)
-WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'
+WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'  # Замени после деплоя
 WEBHOOK_PATH = f'/{TOKEN}'
 WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
 
 # Инициализация бота
 bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 # Замени на свои ID
 ADMIN_ID = 113405030  # Твой Telegram ID
-GROUP_ID = -2484381098  # ID твоей группы
+GROUP_ID = -2484381098  # ID группы
 
 # Функции для работы с файлами
 def load_players():
@@ -255,18 +256,17 @@ async def my_stats(message: types.Message):
             return
     await message.reply("❌ Ты не в списке игроков!")
 
-# Установка Webhook
-async def on_startup(dp):
+# Настройка Webhook
+async def on_startup(_):
     await bot.set_webhook(WEBHOOK_URL)
     print(f"Webhook установлен на {WEBHOOK_URL}")
 
-# Запуск бота
+# Запуск бота через aiohttp
+app = web.Application()
+handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+handler.register(app, path=WEBHOOK_PATH)
+setup_application(app, dp, bot=bot)
+
 if __name__ == '__main__':
-    executor.start_webhook(
-        dispatcher=dp,
-        webhook_path=WEBHOOK_PATH,
-        on_startup=on_startup,
-        skip_updates=True,
-        host='0.0.0.0',
-        port=int(os.environ.get('PORT', 5000))
-    )
+    port = int(os.getenv("PORT", 5000))
+    web.run_app(app, host='0.0.0.0', port=port)
