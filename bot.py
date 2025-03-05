@@ -208,20 +208,20 @@ async def send_welcome(message: types.Message):
 @dp.callback_query(lambda c: c.data == 'help')
 async def process_help(callback_query: types.CallbackQuery):
     if callback_query.from_user.id == ADMIN_ID:
-        help_text = ("📜 **Список команд**:\n"
-                     "/start — начать работу\n"
-                     "/my_stats — твоя статистика\n"
-                     "/top — показать топ игроков\n"
-                     "**Для админа**:\n"
-                     "/add_player \[ID\] \[имя\] — добавить игрока\n"
-                     "/remove_player \[ID\] — удалить игрока")
+        help_text = ("📜 <b>Список команд</b>:<br>"
+                     "/start — начать работу<br>"
+                     "/my_stats — твоя статистика<br>"
+                     "/top — показать топ игроков<br>"
+                     "<b>Для админа</b>:<br>"
+                     "/add_player [ID] [имя] — добавить игрока<br>"
+                     "/remove_player [ID] — удалить игрока")
     else:
-        help_text = ("📜 **Список команд**:\n"
-                     "/start — начать работу\n"
-                     "/my_stats — твоя статистика\n"
-                     "/top — показать топ игроков\n"
+        help_text = ("📜 <b>Список команд</b>:<br>"
+                     "/start — начать работу<br>"
+                     "/my_stats — твоя статистика<br>"
+                     "/top — показать топ игроков<br>"
                      "ℹ️ Если ты участвовал в последней игре, сможешь голосовать за рейтинг!")
-    await bot.send_message(callback_query.from_user.id, help_text, parse_mode='Markdown')
+    await bot.send_message(callback_query.from_user.id, help_text, parse_mode='HTML')
     await bot.answer_callback_query(callback_query.id)
 
 # Обработка кнопки "Моя статистика"
