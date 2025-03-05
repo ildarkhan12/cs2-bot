@@ -18,9 +18,9 @@ GIT_REPO_URL = f"https://{os.getenv('GIT_TOKEN')}@github.com/ildarkhan12/cs2-bot
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Твои ID
+# Твои ID (проверь GROUP_ID!)
 ADMIN_ID = 113405030
-GROUP_ID = -2484381098
+GROUP_ID = -2484381098  # Убедись, что это правильный ID группы
 
 # Функции для работы с файлами и Git
 def load_players():
@@ -42,7 +42,8 @@ def save_players(players_data):
             subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
             subprocess.run(['git', 'add', 'players.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
-            subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+            # Пушим в ветку main
+            subprocess.run(['git', 'push', GIT_REPO_URL, 'HEAD:main'], check=True)
             print("players.json успешно сохранён в GitHub")
         else:
             print("Нет изменений в players.json для коммита")
@@ -69,7 +70,8 @@ def save_maps(maps_data):
             subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
             subprocess.run(['git', 'add', 'maps.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
-            subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+            # Пушим в ветку main
+            subprocess.run(['git', 'push', GIT_REPO_URL, 'HEAD:main'], check=True)
             print("maps.json успешно сохранён в GitHub")
         else:
             print("Нет изменений в maps.json для коммита")
@@ -539,13 +541,17 @@ async def my_stats(message: types.Message):
             return
     await message.reply("❌ Ты не в списке игроков!")
 
-# Настройка Webhook при запуске
+# Настройка Webhook и Git при запуске
 async def on_startup(_):
     try:
-        # Минимальная настройка Git на случай, если она нужна при запуске
+        # Переключаемся на ветку main, если в detached HEAD
+        subprocess.run(['git', 'checkout', 'main'], check=True)
+        # Настраиваем Git
         subprocess.run(['git', 'config', 'user.email', 'bot@example.com'], check=True)
         subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
-        print("Git конфигурация установлена при запуске")
+        # Синхронизируем с удалённым репозиторием
+        subprocess.run(['git', 'pull', GIT_REPO_URL, 'main'], check=True)
+        print("Git успешно настроен и синхронизирован с веткой main")
     except subprocess.CalledProcessError as e:
         print(f"Ошибка настройки Git при запуске: {e}")
     await bot.set_webhook(WEBHOOK_URL)
