@@ -40,6 +40,7 @@ def save_players(players_data):
             subprocess.run(['git', 'add', 'players.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
             subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+            print("players.json успешно сохранён в GitHub")
         else:
             print("Нет изменений в players.json для коммита")
     except subprocess.CalledProcessError as e:
@@ -63,6 +64,7 @@ def save_maps(maps_data):
             subprocess.run(['git', 'add', 'maps.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
             subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+            print("maps.json успешно сохранён в GitHub")
         else:
             print("Нет изменений в maps.json для коммита")
     except subprocess.CalledProcessError as e:
@@ -534,15 +536,16 @@ async def my_stats(message: types.Message):
 # Настройка Webhook и Git при запуске
 async def on_startup(_):
     try:
-        # Настройка Git
-        subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
-        subprocess.run(['git', 'config', '--global', 'user.name', 'CS2Bot'], check=True)
-        # Проверяем, существует ли .git, если нет — клонируем репозиторий
+        # Проверяем наличие .git
         if not os.path.exists('.git'):
+            print("Git-репозиторий отсутствует, клонируем...")
             subprocess.run(['git', 'clone', GIT_REPO_URL, '.'], check=True)
-        else:
-            # Обновляем локальную копию
-            subprocess.run(['git', 'pull', GIT_REPO_URL], check=True)
+        # Настраиваем Git перед любыми операциями
+        subprocess.run(['git', 'config', 'user.email', 'bot@example.com'], check=True)
+        subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
+        # Синхронизируем с удалённым репозиторием
+        subprocess.run(['git', 'pull', GIT_REPO_URL], check=True)
+        print("Git успешно настроен и синхронизирован")
     except subprocess.CalledProcessError as e:
         print(f"Ошибка настройки Git: {e}")
     await bot.set_webhook(WEBHOOK_URL)
