@@ -33,7 +33,6 @@ def load_players():
 def save_players(players_data):
     with open('players.json', 'w', encoding='utf-8') as f:
         json.dump(players_data, f, ensure_ascii=False, indent=4)
-    # Сохраняем изменения в Git
     try:
         subprocess.run(['git', 'add', 'players.json'], check=True)
         subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
@@ -52,13 +51,78 @@ def load_maps():
 def save_maps(maps_data):
     with open('maps.json', 'w', encoding='utf-8') as f:
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
-    # Сохраняем изменения в Git
     try:
         subprocess.run(['git', 'add', 'maps.json'], check=True)
         subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
         subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Ошибка при сохранении maps.json в Git: {e}")
+
+# Функция для отображения текущих результатов
+async def show_current_results(chat_id):
+    players = load_players()['players']
+    result = "🏆 **Текущие результаты голосования**:\n\n"
+    for player in players:
+        if player['ratings']:
+            avg_rating = sum(player['ratings']) / len(player['ratings'])
+            result += f"{player['name']} — {avg_rating:.2f} (оценок: {len(player['ratings'])})\n"
+        else:
+            result += f"{player['name']} — 0.00 (оценок: 0)\n"
+    result += "\nℹ️ Это промежуточные данные, голосование ещё идёт!"
+    await bot.send_message(chat_id, result, parse_mode='Markdown')
+
+# Проверка завершения голосования и финальные результаты
+async def check_voting_complete():
+    players = load_players()['players']
+    participants = [p for p in players if p['played_last_game']]
+    if not participants:
+        return False
+    total_participants = len(participants)
+    for player in participants:
+        expected_ratings = total_participants - 1  # Каждый оценивает всех, кроме себя
+        if len(player['ratings']) != expected_ratings:
+            return False
+    # Все участники проголосовали
+    sorted_players = sorted(players, key=lambda p: p['stats']['avg_rating'] if p['ratings'] else 0, reverse=True)
+    for player in players:
+        if player['ratings']:
+            avg_rating = sum(player['ratings']) / len(player['ratings'])
+            player['stats']['avg_rating'] = avg_rating
+            player['ratings'] = []
+    if sorted_players:
+        sorted_players[0]['awards']['mvp'] += 1
+        sorted_players[0]['stats']['mvp_count'] += 1
+    if len(sorted_players) >= 2:
+        sorted_players[1]['awards']['place1'] += 1
+    if len(sorted_players) >= 3:
+        sorted_players[2]['awards']['place2'] += 1
+    if len(sorted_players) >= 4:
+        sorted_players[3]['awards']['place3'] += 1
+    save_players({"players": players})
+    result = "🏆 **Результаты боя**:\n\n"
+    for i, p in enumerate(sorted_players, 1):
+        awards_str = ""
+        awards = p['awards']
+        award_parts = []
+        if awards['mvp'] > 0:
+            award_parts.append(f"MVP: {awards['mvp']}")
+        if awards['place1'] > 0:
+            award_parts.append(f"1st: {awards['place1']}")
+        if awards['place2'] > 0:
+            award_parts.append(f"2nd: {awards['place2']}")
+        if awards['place3'] > 0:
+            award_parts.append(f"3rd: {awards['place3']}")
+        if award_parts:
+            awards_str = f" ({', '.join(award_parts)})"
+        result += f"{i}. {p['name']} — {p['stats']['avg_rating']:.2f}{awards_str}\n"
+    result += "\n🎖 **Награды**:\n"
+    if sorted_players: result += f"👑 MVP: {sorted_players[0]['name']}\n"
+    if len(sorted_players) >= 2: result += f"🥇 1st: {sorted_players[1]['name']}\n"
+    if len(sorted_players) >= 3: result += f"🥈 2nd: {sorted_players[2]['name']}\n"
+    if len(sorted_players) >= 4: result += f"🥉 3rd: {sorted_players[3]['name']}\n"
+    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+    await bot.send_message(ADMIN_ID, "✅ Голосование завершено автоматически — все участники проголосовали!")
+    return True
 
 # Команда /start
 @dp.message(Command(commands=['start']))
@@ -68,7 +132,7 @@ async def send_welcome(message: types.Message):
                     "🏆 Проводить голосования за рейтинг и карты\n"
                     "🎖 Присуждать награды\n"
                     "📊 Показывать статистику\n\n"
-                    "ℹ️ Админ управляет мной через команды. Выбери действие ниже:")
+                    "ℹ️ Выбери действие ниже:")
     
     inline_keyboard = [
         [
@@ -80,10 +144,10 @@ async def send_welcome(message: types.Message):
         inline_keyboard.extend([
             [
                 types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
-                types.InlineKeyboardButton(text="Голосование за рейтинг", callback_data="start_voting")
+                types.InlineKeyboardButton(text="Голосование за рейтинг", callback_data="start_voting_menu")
             ],
             [
-                types.InlineKeyboardButton(text="Голосование за карты", callback_data="start_map_voting")
+                types.InlineKeyboardButton(text="Голосование за карты", callback_data="start_map_voting_menu")
             ]
         ])
     
@@ -93,17 +157,20 @@ async def send_welcome(message: types.Message):
 # Обработка кнопки "Список команд"
 @dp.callback_query(lambda c: c.data == 'help')
 async def process_help(callback_query: types.CallbackQuery):
-    help_text = ("📜 **Список команд**:\n"
-                 "/start — начать работу\n"
-                 "/my_stats — твоя статистика\n"
-                 "**Для админа**:\n"
-                 "/add_player [ID] [имя] — добавить игрока\n"
-                 "/remove_player [ID] — удалить игрока\n"
-                 "/start_voting — начать голосование за рейтинг\n"
-                 "/end_voting — завершить голосование\n"
-                 "/start_map_voting — голосование за карты\n"
-                 "/end_map_voting — завершить голосование за карты\n"
-                 "/top — показать топ игроков")
+    if callback_query.from_user.id == ADMIN_ID:
+        help_text = ("📜 **Список команд**:\n"
+                     "/start — начать работу\n"
+                     "/my_stats — твоя статистика\n"
+                     "/top — показать топ игроков\n"
+                     "**Для админа**:\n"
+                     "/add_player [ID] [имя] — добавить игрока\n"
+                     "/remove_player [ID] — удалить игрока")
+    else:
+        help_text = ("📜 **Список команд**:\n"
+                     "/start — начать работу\n"
+                     "/my_stats — твоя статистика\n"
+                     "/top — показать топ игроков\n"
+                     "ℹ️ Если ты участвовал в последней игре, сможешь голосовать за рейтинг!")
     await bot.send_message(callback_query.from_user.id, help_text, parse_mode='Markdown')
     await bot.answer_callback_query(callback_query.id)
 
@@ -138,9 +205,6 @@ async def manage_players(callback_query: types.CallbackQuery):
         [
             types.InlineKeyboardButton(text="Добавить игрока", callback_data="add_player_menu"),
             types.InlineKeyboardButton(text="Удалить игрока", callback_data="remove_player_menu")
-        ],
-        [
-            types.InlineKeyboardButton(text="Отметить неучастников", callback_data="mark_absent_menu")
         ]
     ]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
@@ -185,9 +249,9 @@ async def process_remove_player(callback_query: types.CallbackQuery):
     await bot.send_message(callback_query.from_user.id, f"✅ Игрок с ID {player_id} удалён!")
     await bot.answer_callback_query(callback_query.id)
 
-# Меню "Отметить неучастников" (админ)
-@dp.callback_query(lambda c: c.data == 'mark_absent_menu')
-async def mark_absent_menu(callback_query: types.CallbackQuery):
+# Меню "Голосование за рейтинг" (админ)
+@dp.callback_query(lambda c: c.data == 'start_voting_menu')
+async def start_voting_menu(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
         return
@@ -196,13 +260,12 @@ async def mark_absent_menu(callback_query: types.CallbackQuery):
         await bot.send_message(callback_query.from_user.id, "Список игроков пуст!")
         await bot.answer_callback_query(callback_query.id)
         return
-    # По умолчанию все считаются участниками
     for player in players:
         player['played_last_game'] = True
     save_players({"players": players})
     
     inline_keyboard = [[types.InlineKeyboardButton(text=f"{player['name']} (ID: {player['id']})", callback_data=f"absent_{player['id']}")] for player in players]
-    inline_keyboard.append([types.InlineKeyboardButton(text="Готово", callback_data="finish_absent")])
+    inline_keyboard.append([types.InlineKeyboardButton(text="Готово", callback_data="finish_voting_setup")])
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
     await bot.send_message(callback_query.from_user.id, "Выбери игроков, которые НЕ участвовали в последней игре:", reply_markup=keyboard)
     await bot.answer_callback_query(callback_query.id)
@@ -222,9 +285,9 @@ async def mark_absent(callback_query: types.CallbackQuery):
             break
     save_players(players_data)
 
-# Завершение отметки неучастников
-@dp.callback_query(lambda c: c.data == 'finish_absent')
-async def finish_absent(callback_query: types.CallbackQuery):
+# Завершение настройки голосования
+@dp.callback_query(lambda c: c.data == 'finish_voting_setup')
+async def finish_voting_setup(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
         return
@@ -233,9 +296,174 @@ async def finish_absent(callback_query: types.CallbackQuery):
     absentees = [p['name'] for p in players if not p['played_last_game']]
     response = "✅ Участники последней игры отмечены!\n"
     response += f"Играли: {', '.join(participants) if participants else 'никто'}\n"
-    response += f"Не играли: {', '.join(absentees) if absentees else 'никто'}"
-    await bot.send_message(callback_query.from_user.id, response)
+    response += f"Не играли: {', '.join(absentees) if absentees else 'никто'}\n"
+    response += "Выбери действие:"
+    inline_keyboard = [
+        [
+            types.InlineKeyboardButton(text="Запустить голосование", callback_data="launch_voting"),
+            types.InlineKeyboardButton(text="Остановить голосование", callback_data="stop_voting")
+        ],
+        [
+            types.InlineKeyboardButton(text="Текущие результаты", callback_data="current_results")
+        ]
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await bot.send_message(callback_query.from_user.id, response, reply_markup=keyboard)
     await bot.answer_callback_query(callback_query.id)
+
+# Запуск голосования за рейтинг
+@dp.callback_query(lambda c: c.data == 'launch_voting')
+async def launch_voting(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    inline_keyboard = [[types.InlineKeyboardButton(text="Голосовать", callback_data="vote")]]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков (только участники последней игры):", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
+
+# Показ текущих результатов
+@dp.callback_query(lambda c: c.data == 'current_results')
+async def current_results(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    await show_current_results(callback_query.from_user.id)
+    await bot.answer_callback_query(callback_query.id, "Текущие результаты показаны!")
+
+# Остановка голосования за рейтинг (ручная)
+@dp.callback_query(lambda c: c.data == 'stop_voting')
+async def stop_voting(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    await check_voting_complete()  # Используем ту же логику, что и для автоостановки
+    await bot.answer_callback_query(callback_query.id, "Голосование завершено вручную!")
+
+# Обработка кнопки "Голосовать"
+@dp.callback_query(lambda c: c.data == 'vote')
+async def process_start_voting(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    players = load_players()['players']
+    if user_id not in [p['id'] for p in players]:
+        await bot.answer_callback_query(callback_query.id, "❌ Ты не в списке игроков!")
+        return
+    player = next((p for p in players if p['id'] == user_id), None)
+    if not player or not player['played_last_game']:
+        await bot.answer_callback_query(callback_query.id, "❌ Ты не участвовал в последней игре!")
+        return
+    for p in players:
+        if p['id'] != user_id:  # Нельзя голосовать за себя
+            inline_keyboard = [
+                [
+                    types.InlineKeyboardButton(text="5", callback_data=f"rate_{p['id']}_5"),
+                    types.InlineKeyboardButton(text="6", callback_data=f"rate_{p['id']}_6"),
+                    types.InlineKeyboardButton(text="7", callback_data=f"rate_{p['id']}_7"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="8", callback_data=f"rate_{p['id']}_8"),
+                    types.InlineKeyboardButton(text="9", callback_data=f"rate_{p['id']}_9"),
+                    types.InlineKeyboardButton(text="10", callback_data=f"rate_{p['id']}_10"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="Ещё", callback_data=f"more_rates_{p['id']}")
+                ]
+            ]
+            keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+            await bot.send_message(user_id, f"Оцени {p['name']} (5-10):", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id, "Проверь личку для голосования!")
+
+# Обработка кнопки "Ещё"
+@dp.callback_query(lambda c: c.data.startswith('more_rates_'))
+async def more_rates(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    player_id = int(callback_query.data.split('_')[2])
+    players = load_players()['players']
+    player = next((p for p in players if p['id'] == player_id), None)
+    if not player:
+        await bot.answer_callback_query(callback_query.id, "❌ Игрок не найден!")
+        return
+    inline_keyboard = [
+        [
+            types.InlineKeyboardButton(text="1", callback_data=f"rate_{player_id}_1"),
+            types.InlineKeyboardButton(text="2", callback_data=f"rate_{player_id}_2"),
+            types.InlineKeyboardButton(text="3", callback_data=f"rate_{player_id}_3"),
+            types.InlineKeyboardButton(text="4", callback_data=f"rate_{player_id}_4")
+        ]
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await bot.send_message(user_id, f"Оцени {player['name']} (1-4):", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
+
+# Сохранение оценок
+@dp.callback_query(lambda c: c.data.startswith('rate_'))
+async def process_rating(callback_query: types.CallbackQuery):
+    data = callback_query.data.split('_')
+    player_id = int(data[1])
+    rating = int(data[2])
+    players_data = load_players()
+    for player in players_data['players']:
+        if player['id'] == player_id:
+            player['ratings'].append(rating)
+            save_players(players_data)
+            await bot.answer_callback_query(callback_query.id, f"Ты поставил {rating} игроку {player['name']}!")
+            break
+    # Проверяем, завершено ли голосование
+    if await check_voting_complete():
+        print("Голосование автоматически завершено!")
+    return
+
+# Меню "Голосование за карты" (админ)
+@dp.callback_query(lambda c: c.data == 'start_map_voting_menu')
+async def start_map_voting_menu(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
+    inline_keyboard = [
+        [types.InlineKeyboardButton(text=maps[i], callback_data=f"vote_map_{maps[i]}"),
+         types.InlineKeyboardButton(text=maps[i+1], callback_data=f"vote_map_{maps[i+1]}")] for i in range(0, len(maps), 2)
+    ]
+    inline_keyboard.append([
+        types.InlineKeyboardButton(text="Запустить голосование", callback_data="launch_map_voting"),
+        types.InlineKeyboardButton(text="Остановить голосование", callback_data="stop_map_voting")
+    ])
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя или управляй голосованием:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
+
+# Запуск голосования за карты
+@dp.callback_query(lambda c: c.data == 'launch_map_voting')
+async def launch_map_voting(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    await bot.send_message(GROUP_ID, "🗺 Голосование за карты началось! Выбери карты выше.")
+    await bot.answer_callback_query(callback_query.id)
+
+# Остановка голосования за карты
+@dp.callback_query(lambda c: c.data == 'stop_map_voting')
+async def stop_map_voting(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    maps_data = load_maps()
+    sorted_maps = sorted(maps_data.items(), key=lambda x: x[1], reverse=True)[:5]
+    result = "🗺 **Топ-5 карт**:\n"
+    for i, (map_name, votes) in enumerate(sorted_maps, 1):
+        result += f"{i}. {map_name} — {votes} голосов\n"
+    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+    save_maps({map_name: 0 for map_name in maps_data})
+    await bot.answer_callback_query(callback_query.id, "Голосование за карты завершено!")
+
+# Обработка голосов за карты
+@dp.callback_query(lambda c: c.data.startswith('vote_map_'))
+async def process_map_voting(callback_query: types.CallbackQuery):
+    map_name = callback_query.data.split('_')[2]
+    maps_data = load_maps()
+    maps_data[map_name] += 1
+    save_maps(maps_data)
+    await bot.answer_callback_query(callback_query.id, f"Ты проголосовал за {map_name}!")
 
 # Команда /add_player (админ)
 @dp.message(Command(commands=['add_player']))
@@ -263,152 +491,6 @@ async def add_player(message: types.Message):
         await message.reply(f"✅ {player_name} добавлен в состав!")
     except ValueError:
         await message.reply("❌ ID должен быть числом!")
-
-# Команда /start_voting (админ)
-@dp.message(Command(commands=['start_voting']))
-async def start_voting(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.reply("❌ У тебя нет доступа, боец!")
-        return
-    inline_keyboard = [[types.InlineKeyboardButton(text="Голосовать", callback_data="vote")]]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков (только участники последней игры):", reply_markup=keyboard)
-
-# Обработка кнопки "Голосование за рейтинг" (админ)
-@dp.callback_query(lambda c: c.data == 'start_voting')
-async def process_start_voting_button(callback_query: types.CallbackQuery):
-    if callback_query.from_user.id != ADMIN_ID:
-        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
-        return
-    inline_keyboard = [[types.InlineKeyboardButton(text="Голосовать", callback_data="vote")]]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков (только участники последней игры):", reply_markup=keyboard)
-    await bot.answer_callback_query(callback_query.id)
-
-# Обработка кнопки "Голосовать"
-@dp.callback_query(lambda c: c.data == 'vote')
-async def process_start_voting(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    players = load_players()['players']
-    if user_id not in [p['id'] for p in players]:
-        await bot.answer_callback_query(callback_query.id, "❌ Ты не в списке игроков!")
-        return
-    player = next((p for p in players if p['id'] == user_id), None)
-    if not player or not player['played_last_game']:
-        await bot.answer_callback_query(callback_query.id, "❌ Ты не участвовал в последней игре!")
-        return
-    for p in players:
-        if p['id'] != user_id:  # Нельзя голосовать за себя
-            inline_keyboard = [[]]
-            for i in range(1, 11):
-                inline_keyboard[0].append(types.InlineKeyboardButton(text=str(i), callback_data=f"rate_{p['id']}_{i}"))
-            keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-            await bot.send_message(user_id, f"Оцени {p['name']} (1-10):", reply_markup=keyboard)
-    await bot.answer_callback_query(callback_query.id, "Проверь личку для голосования!")
-
-# Сохранение оценок
-@dp.callback_query(lambda c: c.data.startswith('rate_'))
-async def process_rating(callback_query: types.CallbackQuery):
-    data = callback_query.data.split('_')
-    player_id = int(data[1])
-    rating = int(data[2])
-    players_data = load_players()
-    for player in players_data['players']:
-        if player['id'] == player_id:
-            player['ratings'].append(rating)
-            save_players(players_data)
-            await bot.answer_callback_query(callback_query.id, f"Ты поставил {rating} игроку {player['name']}!")
-            return
-
-# Команда /end_voting (админ)
-@dp.message(Command(commands=['end_voting']))
-async def end_voting(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.reply("❌ У тебя нет доступа, боец!")
-        return
-    players = load_players()['players']
-    for player in players:
-        if player['ratings']:
-            avg_rating = sum(player['ratings']) / len(player['ratings'])
-            player['stats']['avg_rating'] = avg_rating
-            player['ratings'] = []
-        else:
-            player['stats']['avg_rating'] = 0
-
-    sorted_players = sorted(players, key=lambda p: p['stats']['avg_rating'], reverse=True)
-    if sorted_players:
-        sorted_players[0]['awards']['mvp'] += 1
-        sorted_players[0]['stats']['mvp_count'] += 1
-    if len(sorted_players) >= 2:
-        sorted_players[1]['awards']['place1'] += 1
-    if len(sorted_players) >= 3:
-        sorted_players[2]['awards']['place2'] += 1
-    if len(sorted_players) >= 4:
-        sorted_players[3]['awards']['place3'] += 1
-
-    save_players({"players": players})
-    result = "🏆 **Результаты боя**:\n\n"
-    for i, p in enumerate(sorted_players, 1):
-        awards = f" (MVP: {p['awards']['mvp']}, 1st: {p['awards']['place1']}, 2nd: {p['awards']['place2']}, 3rd: {p['awards']['place3']})"
-        result += f"{i}. {p['name']} — {p['stats']['avg_rating']:.2f}{awards}\n"
-    result += "\n🎖 **Награды**:\n"
-    if sorted_players: result += f"👑 MVP: {sorted_players[0]['name']}\n"
-    if len(sorted_players) >= 2: result += f"🥇 1st: {sorted_players[1]['name']}\n"
-    if len(sorted_players) >= 3: result += f"🥈 2nd: {sorted_players[2]['name']}\n"
-    if len(sorted_players) >= 4: result += f"🥉 3rd: {sorted_players[3]['name']}\n"
-    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
-
-# Обработка кнопки "Голосование за карты" (админ)
-@dp.callback_query(lambda c: c.data == 'start_map_voting')
-async def start_map_voting_button(callback_query: types.CallbackQuery):
-    if callback_query.from_user.id != ADMIN_ID:
-        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
-        return
-    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
-    inline_keyboard = [
-        [types.InlineKeyboardButton(text=maps[i], callback_data=f"vote_map_{maps[i]}"),
-         types.InlineKeyboardButton(text=maps[i+1], callback_data=f"vote_map_{maps[i+1]}")] for i in range(0, len(maps), 2)
-    ]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
-    await bot.answer_callback_query(callback_query.id)
-
-# Команда /start_map_voting (админ)
-@dp.message(Command(commands=['start_map_voting']))
-async def start_map_voting(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.reply("❌ У тебя нет доступа, боец!")
-        return
-    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
-    inline_keyboard = [
-        [types.InlineKeyboardButton(text=maps[i], callback_data=f"vote_map_{maps[i]}"),
-         types.InlineKeyboardButton(text=maps[i+1], callback_data=f"vote_map_{maps[i+1]}")] for i in range(0, len(maps), 2)
-    ]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
-
-# Обработка голосов за карты
-@dp.callback_query(lambda c: c.data.startswith('vote_map_'))
-async def process_map_voting(callback_query: types.CallbackQuery):
-    map_name = callback_query.data.split('_')[2]
-    maps_data = load_maps()
-    maps_data[map_name] += 1
-    save_maps(maps_data)
-    await bot.answer_callback_query(callback_query.id, f"Ты проголосовал за {map_name}!")
-
-# Команда /end_map_voting (админ)
-@dp.message(Command(commands=['end_map_voting']))
-async def end_map_voting(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.reply("❌ У тебя нет доступа, боец!")
-        return
-    maps_data = load_maps()
-    sorted_maps = sorted(maps_data.items(), key=lambda x: x[1], reverse=True)[:5]
-    result = "🗺 **Топ-5 карт**:\n"
-    for i, (map_name, votes) in enumerate(sorted_maps, 1):
-        result += f"{i}. {map_name} — {votes} голосов\n"
-    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
-    save_maps({map_name: 0 for map_name in maps_data})
 
 # Команда /top
 @dp.message(Command(commands=['top']))
@@ -441,7 +523,6 @@ async def my_stats(message: types.Message):
 
 # Настройка Webhook и Git при запуске
 async def on_startup(_):
-    # Убедимся, что Git настроен
     try:
         subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
         subprocess.run(['git', 'config', '--global', 'user.name', 'CS2Bot'], check=True)
