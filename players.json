@@ -171,7 +171,9 @@
         {
             "id": 495338782,
             "name": "Mukhamet21",
-            "ratings": [],
+            "ratings": [
+                8
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
