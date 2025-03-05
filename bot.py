@@ -243,4 +243,127 @@ async def end_voting(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
         return
-    players
+    players = load_players()['players']
+    for player in players:
+        if player['ratings']:
+            avg_rating = sum(player['ratings']) / len(player['ratings'])
+            player['stats']['avg_rating'] = avg_rating
+            player['ratings'] = []
+        else:
+            player['stats']['avg_rating'] = 0
+
+    sorted_players = sorted(players, key=lambda p: p['stats']['avg_rating'], reverse=True)
+    if sorted_players:
+        sorted_players[0]['awards']['mvp'] += 1
+        sorted_players[0]['stats']['mvp_count'] += 1
+    if len(sorted_players) >= 2:
+        sorted_players[1]['awards']['place1'] += 1
+    if len(sorted_players) >= 3:
+        sorted_players[2]['awards']['place2'] += 1
+    if len(sorted_players) >= 4:
+        sorted_players[3]['awards']['place3'] += 1
+
+    save_players({"players": players})
+    result = "🏆 **Результаты боя**\n\n"
+    for i, p in enumerate(sorted_players, 1):
+        awards = f" (MVP: {p['awards']['mvp']}, 1st: {p['awards']['place1']}, 2nd: {p['awards']['place2']}, 3rd: {p['awards']['place3']})"
+        result += f"{i}. {p['name']} — {p['stats']['avg_rating']:.2f}{awards}\n"
+    result += "\n🎖 **Награды**\n"
+    if sorted_players: result += f"👑 MVP: {sorted_players[0]['name']}\n"
+    if len(sorted_players) >= 2: result += f"🥇 1st: {sorted_players[1]['name']}\n"
+    if len(sorted_players) >= 3: result += f"🥈 2nd: {sorted_players[2]['name']}\n"
+    if len(sorted_players) >= 4: result += f"🥉 3rd: {sorted_players[3]['name']}\n"
+    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+
+# Обработка кнопки "Голосование за карты" (админ)
+@dp.callback_query(lambda c: c.data == 'start_map_voting')
+async def start_map_voting_button(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+    for map_name in maps:
+        keyboard.add(types.InlineKeyboardButton(map_name, callback_data=f"vote_map_{map_name}"))
+    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
+
+# Команда /start_map_voting (админ)
+@dp.message(Command(commands=['start_map_voting']))
+async def start_map_voting(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.reply("❌ У тебя нет доступа, боец!")
+        return
+    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=[])
+    for map_name in maps:
+        keyboard.add(types.InlineKeyboardButton(map_name, callback_data=f"vote_map_{map_name}"))
+    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
+
+# Обработка голосов за карты
+@dp.callback_query(lambda c: c.data.startswith('vote_map_'))
+async def process_map_voting(callback_query: types.CallbackQuery):
+    map_name = callback_query.data.split('_')[2]
+    maps_data = load_maps()
+    maps_data[map_name] += 1
+    save_maps(maps_data)
+    await bot.answer_callback_query(callback_query.id, f"Ты проголосовал за {map_name}!")
+
+# Команда /end_map_voting (админ)
+@dp.message(Command(commands=['end_map_voting']))
+async def end_map_voting(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.reply("❌ У тебя нет доступа, боец!")
+        return
+    maps_data = load_maps()
+    sorted_maps = sorted(maps_data.items(), key=lambda x: x[1], reverse=True)[:5]
+    result = "🗺 **Топ-5 карт**:\n"
+    for i, (map_name, votes) in enumerate(sorted_maps, 1):
+        result += f"{i}. {map_name} — {votes} голосов\n"
+    await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+    save_maps({map_name: 0 for map_name in maps_data})
+
+# Команда /top
+@dp.message(Command(commands=['top']))
+async def top_players(message: types.Message):
+    players = load_players()['players']
+    sorted_players = sorted(players, key=lambda p: p['stats'].get('avg_rating', 0), reverse=True)[:5]
+    result = "🏆 **Топ-5 игроков по рейтингу**:\n"
+    for i, p in enumerate(sorted_players, 1):
+        result += f"{i}. {p['name']} — {p['stats'].get('avg_rating', 0):.2f}\n"
+    await message.reply(result, parse_mode='Markdown')
+
+# Команда /my_stats
+@dp.message(Command(commands=['my_stats']))
+async def my_stats(message: types.Message):
+    user_id = message.from_user.id
+    players = load_players()['players']
+    for p in players:
+        if p['id'] == user_id:
+            stats = p['stats']
+            awards = p['awards']
+            response = (f"📊 **Твоя статистика**\n"
+                        f"Побед: {stats['wins']}\n"
+                        f"Средний рейтинг: {stats['avg_rating']:.2f}\n"
+                        f"MVP: {awards['mvp']} раз\n"
+                        f"1st: {awards['place1']} раз\n"
+                        f"2nd: {awards['place2']} раз\n"
+                        f"3rd: {awards['place3']} раз")
+            await message.reply(response, parse_mode='Markdown')
+            return
+    await message.reply("❌ Ты не в списке игроков!")
+
+# Настройка Webhook
+async def on_startup(_):
+    await bot.set_webhook(WEBHOOK_URL)
+    print(f"Webhook установлен на {WEBHOOK_URL}")
+
+# Запуск бота через aiohttp
+app = web.Application()
+handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+handler.register(app, path=WEBHOOK_PATH)
+setup_application(app, dp, bot=bot)
+
+if __name__ == '__main__':
+    port = int(os.getenv("PORT", 5000))
+    web.run_app(app, host='0.0.0.0', port=port)
