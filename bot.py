@@ -326,6 +326,7 @@ async def start_voting_menu(callback_query: types.CallbackQuery):
         return
     for player in players:
         player['played_last_game'] = True
+        player['ratings'] = []  # Очищаем оценки перед новым голосованием
     save_players({"players": players})
     
     inline_keyboard = [[types.InlineKeyboardButton(text=f"{player['name']} (ID: {player['id']})", callback_data=f"absent_{player['id']}")] for player in players]
@@ -428,7 +429,7 @@ async def stop_voting(callback_query: types.CallbackQuery):
         if len(sorted_players) >= 4:
             sorted_players[3]['awards']['place3'] += 1
         save_players({"players": players})
-        result = "🏆 **Результаты боя**:\n\n"
+        result = "🏆 Результаты боя:\n\n"
         for i, p in enumerate(sorted_players, 1):
             awards_str = ""
             awards = p['awards']
@@ -441,7 +442,7 @@ async def stop_voting(callback_query: types.CallbackQuery):
             elif awards['place3'] > 0:
                 awards_str += f" (🥉 3rd: {awards['place3']})"
             result += f"{i}. {p['name']} — {p['stats']['avg_rating']:.2f}{awards_str}\n"
-        await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+        await bot.send_message(GROUP_ID, result)
         await bot.send_message(ADMIN_ID, "✅ Основное голосование завершено вручную! Запускаем голосование за 'Прорыв вечера'.")
         voting_active = False
         breakthrough_voting_active = True
@@ -451,7 +452,7 @@ async def stop_voting(callback_query: types.CallbackQuery):
         sorted_eligible = sorted(eligible_players, key=lambda p: sum(p.get('breakthrough_ratings', [])) / len(p['breakthrough_ratings']) if p.get('breakthrough_ratings', []) else 0, reverse=True)
         if sorted_eligible:
             sorted_eligible[0]['awards']['breakthrough'] = sorted_eligible[0]['awards'].get('breakthrough', 0) + 1
-            await bot.send_message(GROUP_ID, f"🚀 **Прорыв вечера**: {sorted_eligible[0]['name']}!")
+            await bot.send_message(GROUP_ID, f"🚀 Прорыв вечера: {sorted_eligible[0]['name']}!")
         for player in players:
             player.pop('breakthrough_ratings', None)
         save_players({"players": players})
@@ -489,8 +490,7 @@ async def process_start_voting(callback_query: types.CallbackQuery):
             ]
         ]
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-        await bot.send_message(user_id, f"Оцени {p['name']} (5-10):", reply_markup=keyboard)
-    # Отправляем кнопку "Завершить голосование" отдельным сообщением после всех игроков
+        await bot.send_message(user_id, f"Оцени {p['name']} (1-10):", reply_markup=keyboard)
     finish_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="Завершить голосование", callback_data="finish_voting_user")]
     ])
@@ -516,7 +516,12 @@ async def more_rates(callback_query: types.CallbackQuery):
         ]
     ]
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await bot.send_message(user_id, f"Оцени {player['name']} (1-4):", reply_markup=keyboard)
+    await bot.edit_message_text(
+        chat_id=user_id,
+        message_id=callback_query.message.message_id,
+        text=f"Оцени {player['name']} (1-10):",
+        reply_markup=keyboard
+    )
     await bot.answer_callback_query(callback_query.id)
 
 # Сохранение оценок и изменение сообщения (основное голосование)
