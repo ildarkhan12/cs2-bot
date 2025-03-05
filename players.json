@@ -266,7 +266,9 @@
         {
             "id": 88242574,
             "name": "bagmanoff",
-            "ratings": [],
+            "ratings": [
+                9
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
