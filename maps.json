@@ -1,12 +1,12 @@
 {
-    "Dust2": 1,
-    "Mirage": 1,
-    "Inferno": 1,
-    "Nuke": 1,
-    "Overpass": 1,
-    "Vertigo": 1,
-    "Ancient": 1,
+    "Dust2": 0,
+    "Mirage": 0,
+    "Inferno": 0,
+    "Nuke": 0,
+    "Overpass": 0,
+    "Vertigo": 0,
+    "Ancient": 0,
     "Anubis": 0,
-    "Cache": 1,
-    "Train": 2
+    "Cache": 0,
+    "Train": 0
 }
