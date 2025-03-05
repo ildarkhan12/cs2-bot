@@ -94,7 +94,9 @@
         {
             "id": 5449944462,
             "name": "Фея_Динь_Динь",
-            "ratings": [],
+            "ratings": [
+                4
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
