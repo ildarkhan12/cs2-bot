@@ -12,6 +12,7 @@ TOKEN = os.getenv('TOKEN', '7905448986:AAG5rXLzIjPLK6ayuah9Hsn2VdJKyUPqNPQ')
 WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'
 WEBHOOK_PATH = f'/{TOKEN}'
 WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
+GIT_REPO_URL = f"https://{os.getenv('GIT_TOKEN')}@github.com/ildarkhan12/cs2-bot.git"
 
 # Инициализация бота
 bot = Bot(token=TOKEN)
@@ -36,9 +37,9 @@ def save_players(players_data):
     try:
         subprocess.run(['git', 'add', 'players.json'], check=True)
         subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
-        subprocess.run(['git', 'push'], check=True)
+        subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка при сохранении в Git: {e}")
+        print(f"Ошибка при сохранении players.json в Git: {e}")
 
 def load_maps():
     if not os.path.exists('maps.json'):
@@ -55,9 +56,9 @@ def save_maps(maps_data):
     try:
         subprocess.run(['git', 'add', 'maps.json'], check=True)
         subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
-        subprocess.run(['git', 'push'], check=True)
+        subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка при сохранении в Git: {e}")
+        print(f"Ошибка при сохранении maps.json в Git: {e}")
 
 # Команда /start
 @dp.message(Command(commands=['start']))
@@ -96,8 +97,8 @@ async def process_help(callback_query: types.CallbackQuery):
                  "/start — начать работу\n"
                  "/my_stats — твоя статистика\n"
                  "**Для админа**:\n"
-                 "/add_player 'ID' 'имя' — добавить игрока\n"
-                 "/remove_player 'ID' — удалить игрока\n"
+                 "/add_player [ID] [имя] — добавить игрока\n"
+                 "/remove_player [ID] — удалить игрока\n"
                  "/start_voting — начать голосование за рейтинг\n"
                  "/end_voting — завершить голосование\n"
                  "/start_map_voting — голосование за карты\n"
@@ -152,7 +153,7 @@ async def add_player_menu(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
         return
-    await bot.send_message(callback_query.from_user.id, "Напиши: /add_player 'ID' 'имя'\nНапример: /add_player 123456789 Иван")
+    await bot.send_message(callback_query.from_user.id, "Напиши: /add_player [ID] [имя]\nНапример: /add_player 123456789 Иван")
     await bot.answer_callback_query(callback_query.id)
 
 # Меню "Удалить игрока" (админ)
@@ -244,7 +245,7 @@ async def add_player(message: types.Message):
         return
     args = message.text.split(maxsplit=2)[1:]
     if len(args) < 2:
-        await message.reply("ℹ️ Используй: /add_player 'ID' 'имя'")
+        await message.reply("ℹ️ Используй: /add_player [ID] [имя]")
         return
     try:
         player_id = int(args[0])
@@ -254,7 +255,7 @@ async def add_player(message: types.Message):
             "id": player_id,
             "name": player_name,
             "ratings": [],
-            "played_last_game": True,  # По умолчанию участвует
+            "played_last_game": True,
             "awards": {"mvp": 0, "place1": 0, "place2": 0, "place3": 0},
             "stats": {"avg_rating": 0, "mvp_count": 0}
         })
