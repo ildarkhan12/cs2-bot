@@ -209,7 +209,9 @@
         {
             "id": 1492228669,
             "name": "KaRSaN",
-            "ratings": [],
+            "ratings": [
+                8
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
