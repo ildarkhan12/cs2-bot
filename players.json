@@ -133,7 +133,9 @@
         {
             "id": 1944823446,
             "name": "Bulatagai",
-            "ratings": [],
+            "ratings": [
+                8
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
