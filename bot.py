@@ -37,6 +37,9 @@ def save_players(players_data):
         # Проверяем, есть ли изменения
         result = subprocess.run(['git', 'status', '--porcelain', 'players.json'], capture_output=True, text=True)
         if result.stdout.strip():  # Если есть изменения
+            # Настраиваем Git перед коммитом
+            subprocess.run(['git', 'config', 'user.email', 'bot@example.com'], check=True)
+            subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
             subprocess.run(['git', 'add', 'players.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
             subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
@@ -61,6 +64,9 @@ def save_maps(maps_data):
         # Проверяем, есть ли изменения
         result = subprocess.run(['git', 'status', '--porcelain', 'maps.json'], capture_output=True, text=True)
         if result.stdout.strip():  # Если есть изменения
+            # Настраиваем Git перед коммитом
+            subprocess.run(['git', 'config', 'user.email', 'bot@example.com'], check=True)
+            subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
             subprocess.run(['git', 'add', 'maps.json'], check=True)
             subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
             subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
@@ -533,21 +539,15 @@ async def my_stats(message: types.Message):
             return
     await message.reply("❌ Ты не в списке игроков!")
 
-# Настройка Webhook и Git при запуске
+# Настройка Webhook при запуске
 async def on_startup(_):
     try:
-        # Проверяем наличие .git
-        if not os.path.exists('.git'):
-            print("Git-репозиторий отсутствует, клонируем...")
-            subprocess.run(['git', 'clone', GIT_REPO_URL, '.'], check=True)
-        # Настраиваем Git перед любыми операциями
+        # Минимальная настройка Git на случай, если она нужна при запуске
         subprocess.run(['git', 'config', 'user.email', 'bot@example.com'], check=True)
         subprocess.run(['git', 'config', 'user.name', 'CS2Bot'], check=True)
-        # Синхронизируем с удалённым репозиторием
-        subprocess.run(['git', 'pull', GIT_REPO_URL], check=True)
-        print("Git успешно настроен и синхронизирован")
+        print("Git конфигурация установлена при запуске")
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка настройки Git: {e}")
+        print(f"Ошибка настройки Git при запуске: {e}")
     await bot.set_webhook(WEBHOOK_URL)
     print(f"Webhook установлен на {WEBHOOK_URL}")
 
