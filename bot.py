@@ -43,7 +43,7 @@ def save_maps(maps_data):
     with open('maps.json', 'w', encoding='utf-8') as f:
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
 
-# Команда /start с новым приветствием и кнопками
+# Команда /start с приветствием и кнопками
 @dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
     welcome_text = ("Салам, боец!\n"
@@ -51,9 +51,8 @@ async def send_welcome(message: types.Message):
                     "🏆 Проводить голосования за рейтинг и карты\n"
                     "🎖 Присуждать награды\n"
                     "📊 Показывать статистику\n\n"
-                    "ℹ️ Админ управляет мной через команды. Напиши /help для списка!")
+                    "ℹ️ Админ управляет мной через команды. Выбери действие ниже:")
     
-    # Создаём клавиатуру
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     keyboard.add(
         types.InlineKeyboardButton("Список команд", callback_data="help"),
@@ -61,8 +60,9 @@ async def send_welcome(message: types.Message):
     )
     if message.from_user.id == ADMIN_ID:
         keyboard.add(
-            types.InlineKeyboardButton("Добавить игрока", callback_data="add_player"),
-            types.InlineKeyboardButton("Начать голосование", callback_data="start_voting")
+            types.InlineKeyboardButton("Управление игроками", callback_data="manage_players"),
+            types.InlineKeyboardButton("Голосование за рейтинг", callback_data="start_voting"),
+            types.InlineKeyboardButton("Голосование за карты", callback_data="start_map_voting")
         )
     
     await message.reply(welcome_text, reply_markup=keyboard)
@@ -106,24 +106,57 @@ async def process_my_stats(callback_query: types.CallbackQuery):
     await bot.send_message(user_id, "❌ Ты не в списке игроков!")
     await bot.answer_callback_query(callback_query.id)
 
-# Обработка кнопки "Добавить игрока" (админ)
-@dp.callback_query(lambda c: c.data == 'add_player')
-async def process_add_player(callback_query: types.CallbackQuery):
+# Обработка кнопки "Управление игроками" (админ)
+@dp.callback_query(lambda c: c.data == 'manage_players')
+async def manage_players(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
         return
-    await bot.send_message(callback_query.from_user.id, "Напиши: /add_player <ID> <имя>")
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        types.InlineKeyboardButton("Добавить игрока", callback_data="add_player_menu"),
+        types.InlineKeyboardButton("Удалить игрока", callback_data="remove_player_menu")
+    )
+    await bot.send_message(callback_query.from_user.id, "Выбери действие:", reply_markup=keyboard)
     await bot.answer_callback_query(callback_query.id)
 
-# Обработка кнопки "Начать голосование" (админ)
-@dp.callback_query(lambda c: c.data == 'start_voting')
-async def process_start_voting_button(callback_query: types.CallbackQuery):
+# Меню "Добавить игрока" (админ)
+@dp.callback_query(lambda c: c.data == 'add_player_menu')
+async def add_player_menu(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
         await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
         return
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton("🎯 Голосовать", callback_data="vote"))
-    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
+    await bot.send_message(callback_query.from_user.id, "Напиши: /add_player <ID> <имя>\nНапример: /add_player 123456789 Иван")
+    await bot.answer_callback_query(callback_query.id)
+
+# Меню "Удалить игрока" (админ)
+@dp.callback_query(lambda c: c.data == 'remove_player_menu')
+async def remove_player_menu(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    players = load_players()['players']
+    if not players:
+        await bot.send_message(callback_query.from_user.id, "Список игроков пуст!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    for player in players:
+        keyboard.add(types.InlineKeyboardButton(f"{player['name']} (ID: {player['id']})", callback_data=f"remove_{player['id']}"))
+    await bot.send_message(callback_query.from_user.id, "Выбери игрока для удаления:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
+
+# Удаление игрока через кнопку
+@dp.callback_query(lambda c: c.data.startswith('remove_'))
+async def process_remove_player(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    player_id = int(callback_query.data.split('_')[1])
+    players_data = load_players()
+    players_data['players'] = [p for p in players_data['players'] if p['id'] != player_id]
+    save_players(players_data)
+    await bot.send_message(callback_query.from_user.id, f"✅ Игрок с ID {player_id} удалён!")
     await bot.answer_callback_query(callback_query.id)
 
 # Команда /add_player (админ)
@@ -152,25 +185,6 @@ async def add_player(message: types.Message):
     except ValueError:
         await message.reply("❌ ID должен быть числом!")
 
-# Команда /remove_player (админ)
-@dp.message(Command(commands=['remove_player']))
-async def remove_player(message: types.Message):
-    if message.from_user.id != ADMIN_ID:
-        await message.reply("❌ У тебя нет доступа, боец!")
-        return
-    args = message.text.split()[1:]
-    if len(args) < 1:
-        await message.reply("ℹ️ Используй: /remove_player <ID>")
-        return
-    try:
-        player_id = int(args[0])
-        players_data = load_players()
-        players_data['players'] = [p for p in players_data['players'] if p['id'] != player_id]
-        save_players(players_data)
-        await message.reply(f"✅ Игрок с ID {player_id} удалён!")
-    except ValueError:
-        await message.reply("❌ ID должен быть числом!")
-
 # Команда /start_voting (админ)
 @dp.message(Command(commands=['start_voting']))
 async def start_voting(message: types.Message):
@@ -178,8 +192,19 @@ async def start_voting(message: types.Message):
         await message.reply("❌ У тебя нет доступа, боец!")
         return
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton("🎯 Голосовать", callback_data="vote"))
+    keyboard.add(types.InlineKeyboardButton("Голосовать", callback_data="vote"))
     await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
+
+# Обработка кнопки "Голосование за рейтинг" (админ)
+@dp.callback_query(lambda c: c.data == 'start_voting')
+async def process_start_voting_button(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("Голосовать", callback_data="vote"))
+    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
 
 # Обработка кнопки "Голосовать"
 @dp.callback_query(lambda c: c.data == 'vote')
@@ -248,6 +273,19 @@ async def end_voting(message: types.Message):
     if len(sorted_players) >= 3: result += f"🥈 2nd: {sorted_players[2]['name']}\n"
     if len(sorted_players) >= 4: result += f"🥉 3rd: {sorted_players[3]['name']}\n"
     await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
+
+# Обработка кнопки "Голосование за карты" (админ)
+@dp.callback_query(lambda c: c.data == 'start_map_voting')
+async def start_map_voting_button(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    maps = ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    for map_name in maps:
+        keyboard.add(types.InlineKeyboardButton(map_name, callback_data=f"vote_map_{map_name}"))
+    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
 
 # Команда /start_map_voting (админ)
 @dp.message(Command(commands=['start_map_voting']))
