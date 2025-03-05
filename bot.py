@@ -78,16 +78,17 @@ def save_maps(maps_data):
 
 # Функция для отображения текущих результатов
 async def show_current_results(chat_id):
-    players = load_players()['players']
-    result = "🏆 **Текущие результаты голосования**:\n\n"
+    players_data = load_players()
+    players = players_data['players']
+    result = "🏆 Текущие результаты голосования:\n\n"
     for player in players:
         if player['ratings']:
             avg_rating = sum(player['ratings']) / len(player['ratings'])
             result += f"{player['name']} — {avg_rating:.2f} (оценок: {len(player['ratings'])})\n"
         else:
             result += f"{player['name']} — 0.00 (оценок: 0)\n"
-    result += "\nℹ️ Это промежуточные данные, голосование ещё идёт!"
-    await bot.send_message(chat_id, result, parse_mode='Markdown')
+    result += "\nЭто промежуточные данные, голосование ещё идёт!"
+    await bot.send_message(chat_id, result)
 
 # Проверка завершения основного голосования и запуск голосования за "Прорыв вечера"
 async def check_voting_complete():
@@ -489,6 +490,11 @@ async def process_start_voting(callback_query: types.CallbackQuery):
         ]
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
         await bot.send_message(user_id, f"Оцени {p['name']} (5-10):", reply_markup=keyboard)
+    # Отправляем кнопку "Завершить голосование" отдельным сообщением после всех игроков
+    finish_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="Завершить голосование", callback_data="finish_voting_user")]
+    ])
+    await bot.send_message(user_id, "Когда закончишь оценивать всех, нажми ниже:", reply_markup=finish_keyboard)
     await bot.answer_callback_query(callback_query.id, "Проверь личку для голосования!")
 
 # Обработка кнопки "Ещё"
@@ -572,6 +578,34 @@ async def edit_rating(callback_query: types.CallbackQuery):
         text=f"Оцени {player['name']} (5-10):",
         reply_markup=keyboard
     )
+    await bot.answer_callback_query(callback_query.id)
+
+# Обработка кнопки "Завершить голосование"
+@dp.callback_query(lambda c: c.data == 'finish_voting_user')
+async def finish_voting_user(callback_query: types.CallbackQuery):
+    global voting_active
+    user_id = callback_query.from_user.id
+    players_data = load_players()
+    players = players_data['players']
+    player = next((p for p in players if p['id'] == user_id), None)
+    if not player or not player['played_last_game']:
+        await bot.answer_callback_query(callback_query.id, "❌ Ты не участвовал в последней игре!")
+        return
+    participants = [p for p in players if p['played_last_game'] and p['id'] != user_id]
+    all_rated = all(len(p['ratings']) > 0 for p in participants)
+    if not all_rated:
+        await bot.send_message(user_id, "Ты ещё не оценил всех участников!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    save_players(players_data)
+    await bot.send_message(user_id, "✅ Твоё голосование завершено!")
+    await bot.edit_message_reply_markup(
+        chat_id=user_id,
+        message_id=callback_query.message.message_id,
+        reply_markup=None
+    )
+    if await check_voting_complete():
+        print("Голосование автоматически завершено!")
     await bot.answer_callback_query(callback_query.id)
 
 # Обработка кнопки "Голосовать за 'Прорыв вечера'"
