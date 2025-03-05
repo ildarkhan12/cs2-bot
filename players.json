@@ -247,7 +247,9 @@
         {
             "id": 543403091,
             "name": "BuLLdozzer13",
-            "ratings": [],
+            "ratings": [
+                9
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
