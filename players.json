@@ -3,9 +3,7 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 1,
@@ -14,25 +12,23 @@
                 "place3": 0
             },
             "stats": {
-                "avg_rating": 10.0,
+                "avg_rating": 8.0,
                 "mvp_count": 1
             }
         },
         {
             "id": 471628332,
             "name": "NotFound",
-            "ratings": [
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
-                "place1": 1,
+                "place1": 2,
                 "place2": 0,
                 "place3": 0
             },
             "stats": {
-                "avg_rating": 8.0,
+                "avg_rating": 9.0,
                 "mvp_count": 0
             }
         },
@@ -55,10 +51,7 @@
         {
             "id": 480892405,
             "name": "Fakha",
-            "ratings": [
-                4,
-                7
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -68,16 +61,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 5.5,
                 "mvp_count": 0
             }
         },
         {
             "id": 586935137,
             "name": "RodJER",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -87,17 +78,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 5449944462,
             "name": "Фея_Динь_Динь",
-            "ratings": [
-                4,
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -107,35 +95,31 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 6.5,
                 "mvp_count": 0
             }
         },
         {
             "id": 6839287337,
             "name": "ilnur.khalitov",
-            "ratings": [
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
-                "place2": 0,
+                "place2": 1,
                 "place3": 0,
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 9.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 1944823446,
             "name": "Bulatagai",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -145,16 +129,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 771664527,
             "name": "s6les",
-            "ratings": [
-                7
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -164,16 +146,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 7.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 495338782,
             "name": "Mukhamet21",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -183,16 +163,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 1152701195,
             "name": "Aza_GR",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -202,16 +180,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 1492228669,
             "name": "KaRSaN",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -221,35 +197,31 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 1826445612,
             "name": "bert",
-            "ratings": [
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
                 "place2": 0,
-                "place3": 0,
+                "place3": 1,
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 9.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 543403091,
             "name": "BuLLdozzer13",
-            "ratings": [
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -259,16 +231,14 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 9.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 88242574,
             "name": "bagmanoff",
-            "ratings": [
-                9
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -278,27 +248,25 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 9.0,
                 "mvp_count": 0
             }
         },
         {
             "id": 940398443,
             "name": "SulkySkirt",
-            "ratings": [
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
-                "mvp": 0,
+                "mvp": 1,
                 "place1": 0,
                 "place2": 0,
                 "place3": 0,
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
-                "mvp_count": 0
+                "avg_rating": 10.0,
+                "mvp_count": 1
             }
         }
     ]
