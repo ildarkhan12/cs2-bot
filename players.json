@@ -3,36 +3,32 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
-                "mvp": 0,
+                "mvp": 1,
                 "place1": 0,
                 "place2": 0,
                 "place3": 0
             },
             "stats": {
-                "avg_rating": 0,
-                "mvp_count": 0
+                "avg_rating": 10.0,
+                "mvp_count": 1
             }
         },
         {
             "id": 471628332,
             "name": "NotFound",
-            "ratings": [
-                8
-            ],
+            "ratings": [],
             "played_last_game": false,
             "awards": {
                 "mvp": 0,
-                "place1": 0,
+                "place1": 1,
                 "place2": 0,
                 "place3": 0
             },
             "stats": {
-                "avg_rating": 0,
+                "avg_rating": 8.0,
                 "mvp_count": 0
             }
         },
@@ -44,7 +40,7 @@
             "awards": {
                 "mvp": 0,
                 "place1": 0,
-                "place2": 0,
+                "place2": 1,
                 "place3": 0
             },
             "stats": {
