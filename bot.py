@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import subprocess
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
@@ -20,28 +21,43 @@ dp = Dispatcher()
 ADMIN_ID = 113405030
 GROUP_ID = -2484381098
 
-# Функции для работы с файлами
+# Функции для работы с файлами и Git
 def load_players():
-    try:
-        with open('players.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {"players": []}
+    if not os.path.exists('players.json'):
+        with open('players.json', 'w', encoding='utf-8') as f:
+            json.dump({"players": []}, f, ensure_ascii=False, indent=4)
+    with open('players.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def save_players(players_data):
     with open('players.json', 'w', encoding='utf-8') as f:
         json.dump(players_data, f, ensure_ascii=False, indent=4)
+    # Сохраняем изменения в Git
+    try:
+        subprocess.run(['git', 'add', 'players.json'], check=True)
+        subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
+        subprocess.run(['git', 'push'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Ошибка при сохранении в Git: {e}")
 
 def load_maps():
-    try:
-        with open('maps.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {map_name: 0 for map_name in ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]}
+    if not os.path.exists('maps.json'):
+        default_maps = {map_name: 0 for map_name in ["Dust2", "Mirage", "Inferno", "Nuke", "Overpass", "Vertigo", "Ancient", "Anubis", "Cache", "Train"]}
+        with open('maps.json', 'w', encoding='utf-8') as f:
+            json.dump(default_maps, f, ensure_ascii=False, indent=4)
+    with open('maps.json', 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def save_maps(maps_data):
     with open('maps.json', 'w', encoding='utf-8') as f:
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
+    # Сохраняем изменения в Git
+    try:
+        subprocess.run(['git', 'add', 'maps.json'], check=True)
+        subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
+        subprocess.run(['git', 'push'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Ошибка при сохранении в Git: {e}")
 
 # Команда /start
 @dp.message(Command(commands=['start']))
@@ -276,7 +292,6 @@ async def process_start_voting(callback_query: types.CallbackQuery):
     if user_id not in [p['id'] for p in players]:
         await bot.answer_callback_query(callback_query.id, "❌ Ты не в списке игроков!")
         return
-    # Проверка участия в последней игре
     player = next((p for p in players if p['id'] == user_id), None)
     if not player or not player['played_last_game']:
         await bot.answer_callback_query(callback_query.id, "❌ Ты не участвовал в последней игре!")
@@ -423,8 +438,14 @@ async def my_stats(message: types.Message):
             return
     await message.reply("❌ Ты не в списке игроков!")
 
-# Настройка Webhook
+# Настройка Webhook и Git при запуске
 async def on_startup(_):
+    # Убедимся, что Git настроен
+    try:
+        subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
+        subprocess.run(['git', 'config', '--global', 'user.name', 'CS2Bot'], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Ошибка настройки Git: {e}")
     await bot.set_webhook(WEBHOOK_URL)
     print(f"Webhook установлен на {WEBHOOK_URL}")
 
