@@ -1,25 +1,6 @@
 {
     "players": [
         {
-            "id": 267576019,
-            "name": "Lighthouse",
-            "ratings": [
-                10,
-                8
-            ],
-            "played_last_game": true,
-            "awards": {
-                "mvp": 0,
-                "place1": 0,
-                "place2": 0,
-                "place3": 0
-            },
-            "stats": {
-                "avg_rating": 0,
-                "mvp_count": 0
-            }
-        },
-        {
             "id": 471628332,
             "name": "NotFound",
             "ratings": [
@@ -41,22 +22,6 @@
         {
             "id": 113405030,
             "name": "jkee",
-            "ratings": [],
-            "played_last_game": true,
-            "awards": {
-                "mvp": 0,
-                "place1": 0,
-                "place2": 0,
-                "place3": 0
-            },
-            "stats": {
-                "avg_rating": 0,
-                "mvp_count": 0
-            }
-        },
-        {
-            "id": 267576019,
-            "name": "Lighthouse",
             "ratings": [],
             "played_last_game": true,
             "awards": {
