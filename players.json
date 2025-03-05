@@ -185,7 +185,10 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0
-            }
+            },
+            "breakthrough_ratings": [
+                1
+            ]
         },
         {
             "id": 1492228669,
