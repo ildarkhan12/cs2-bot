@@ -3,7 +3,9 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [],
+            "ratings": [
+                8
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 1,
