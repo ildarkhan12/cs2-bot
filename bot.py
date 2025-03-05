@@ -34,9 +34,14 @@ def save_players(players_data):
     with open('players.json', 'w', encoding='utf-8') as f:
         json.dump(players_data, f, ensure_ascii=False, indent=4)
     try:
-        subprocess.run(['git', 'add', 'players.json'], check=True)
-        subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
-        subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+        # Проверяем, есть ли изменения
+        result = subprocess.run(['git', 'status', '--porcelain', 'players.json'], capture_output=True, text=True)
+        if result.stdout.strip():  # Если есть изменения
+            subprocess.run(['git', 'add', 'players.json'], check=True)
+            subprocess.run(['git', 'commit', '-m', 'Update players.json'], check=True)
+            subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+        else:
+            print("Нет изменений в players.json для коммита")
     except subprocess.CalledProcessError as e:
         print(f"Ошибка при сохранении players.json в Git: {e}")
 
@@ -52,9 +57,14 @@ def save_maps(maps_data):
     with open('maps.json', 'w', encoding='utf-8') as f:
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
     try:
-        subprocess.run(['git', 'add', 'maps.json'], check=True)
-        subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
-        subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+        # Проверяем, есть ли изменения
+        result = subprocess.run(['git', 'status', '--porcelain', 'maps.json'], capture_output=True, text=True)
+        if result.stdout.strip():  # Если есть изменения
+            subprocess.run(['git', 'add', 'maps.json'], check=True)
+            subprocess.run(['git', 'commit', '-m', 'Update maps.json'], check=True)
+            subprocess.run(['git', 'push', GIT_REPO_URL], check=True)
+        else:
+            print("Нет изменений в maps.json для коммита")
     except subprocess.CalledProcessError as e:
         print(f"Ошибка при сохранении maps.json в Git: {e}")
 
@@ -524,8 +534,15 @@ async def my_stats(message: types.Message):
 # Настройка Webhook и Git при запуске
 async def on_startup(_):
     try:
+        # Настройка Git
         subprocess.run(['git', 'config', '--global', 'user.email', 'bot@example.com'], check=True)
         subprocess.run(['git', 'config', '--global', 'user.name', 'CS2Bot'], check=True)
+        # Проверяем, существует ли .git, если нет — клонируем репозиторий
+        if not os.path.exists('.git'):
+            subprocess.run(['git', 'clone', GIT_REPO_URL, '.'], check=True)
+        else:
+            # Обновляем локальную копию
+            subprocess.run(['git', 'pull', GIT_REPO_URL], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Ошибка настройки Git: {e}")
     await bot.set_webhook(WEBHOOK_URL)
