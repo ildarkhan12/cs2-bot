@@ -21,7 +21,9 @@
         {
             "id": 471628332,
             "name": "NotFound",
-            "ratings": [],
+            "ratings": [
+                10
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
