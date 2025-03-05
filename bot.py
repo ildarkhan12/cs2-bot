@@ -6,9 +6,9 @@ from aiogram.filters import Command
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
-# Токен бота из переменной окружения (настроим на Render)
-TOKEN = os.getenv('TOKEN')
-WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'  # Замени после деплоя
+# Токен бота из переменной окружения (для Render)
+TOKEN = os.getenv('TOKEN', '7905448986:AAG5rXLzIjPLK6ayuah9Hsn2VdJKyUPqNPQ')
+WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'
 WEBHOOK_PATH = f'/{TOKEN}'
 WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
 
@@ -16,7 +16,7 @@ WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Замени на свои ID
+# Твои ID
 ADMIN_ID = 113405030  # Твой Telegram ID
 GROUP_ID = -2484381098  # ID группы
 
@@ -43,19 +43,33 @@ def save_maps(maps_data):
     with open('maps.json', 'w', encoding='utf-8') as f:
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
 
-# Команда /start
+# Команда /start с новым приветствием и кнопками
 @dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
-    await message.reply("🎯 Привет, боец! Я бот твоей CS2-команды. Вот что я умею:\n"
-                        "🔫 Управлять списком игроков\n"
-                        "🏆 Проводить голосования за рейтинг и карты\n"
-                        "🎖 Присуждать награды\n"
-                        "📊 Показывать статистику\n"
-                        "ℹ️ Админ управляет мной через команды. Напиши /help для списка!")
+    welcome_text = ("Салам, боец!\n"
+                    "Я бот вашей CS2-тусовки. Вот что я умею:\n"
+                    "🏆 Проводить голосования за рейтинг и карты\n"
+                    "🎖 Присуждать награды\n"
+                    "📊 Показывать статистику\n\n"
+                    "ℹ️ Админ управляет мной через команды. Напиши /help для списка!")
+    
+    # Создаём клавиатуру
+    keyboard = types.InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        types.InlineKeyboardButton("Список команд", callback_data="help"),
+        types.InlineKeyboardButton("Моя статистика", callback_data="my_stats")
+    )
+    if message.from_user.id == ADMIN_ID:
+        keyboard.add(
+            types.InlineKeyboardButton("Добавить игрока", callback_data="add_player"),
+            types.InlineKeyboardButton("Начать голосование", callback_data="start_voting")
+        )
+    
+    await message.reply(welcome_text, reply_markup=keyboard)
 
-# Команда /help
-@dp.message(Command(commands=['help']))
-async def send_help(message: types.Message):
+# Обработка кнопки "Список команд"
+@dp.callback_query(lambda c: c.data == 'help')
+async def process_help(callback_query: types.CallbackQuery):
     help_text = ("📜 **Список команд**:\n"
                  "/start — начать работу\n"
                  "/my_stats — твоя статистика\n"
@@ -67,7 +81,50 @@ async def send_help(message: types.Message):
                  "/start_map_voting — голосование за карты\n"
                  "/end_map_voting — завершить голосование за карты\n"
                  "/top — показать топ игроков")
-    await message.reply(help_text, parse_mode='Markdown')
+    await bot.send_message(callback_query.from_user.id, help_text, parse_mode='Markdown')
+    await bot.answer_callback_query(callback_query.id)
+
+# Обработка кнопки "Моя статистика"
+@dp.callback_query(lambda c: c.data == 'my_stats')
+async def process_my_stats(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    players = load_players()['players']
+    for p in players:
+        if p['id'] == user_id:
+            stats = p['stats']
+            awards = p['awards']
+            response = (f"📊 **Твоя статистика**\n"
+                        f"Побед: {stats['wins']}\n"
+                        f"Средний рейтинг: {stats['avg_rating']:.2f}\n"
+                        f"MVP: {awards['mvp']} раз\n"
+                        f"1st: {awards['place1']} раз\n"
+                        f"2nd: {awards['place2']} раз\n"
+                        f"3rd: {awards['place3']} раз")
+            await bot.send_message(user_id, response, parse_mode='Markdown')
+            await bot.answer_callback_query(callback_query.id)
+            return
+    await bot.send_message(user_id, "❌ Ты не в списке игроков!")
+    await bot.answer_callback_query(callback_query.id)
+
+# Обработка кнопки "Добавить игрока" (админ)
+@dp.callback_query(lambda c: c.data == 'add_player')
+async def process_add_player(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    await bot.send_message(callback_query.from_user.id, "Напиши: /add_player <ID> <имя>")
+    await bot.answer_callback_query(callback_query.id)
+
+# Обработка кнопки "Начать голосование" (админ)
+@dp.callback_query(lambda c: c.data == 'start_voting')
+async def process_start_voting_button(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton("🎯 Голосовать", callback_data="vote"))
+    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
+    await bot.answer_callback_query(callback_query.id)
 
 # Команда /add_player (админ)
 @dp.message(Command(commands=['add_player']))
@@ -121,11 +178,11 @@ async def start_voting(message: types.Message):
         await message.reply("❌ У тебя нет доступа, боец!")
         return
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton("🎯 Голосовать", callback_data="start_voting"))
-    await bot.send_message(GROUP_ID, "🔫 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
+    keyboard.add(types.InlineKeyboardButton("🎯 Голосовать", callback_data="vote"))
+    await bot.send_message(GROUP_ID, "🏆 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
 
 # Обработка кнопки "Голосовать"
-@dp.callback_query(lambda c: c.data == 'start_voting')
+@dp.callback_query(lambda c: c.data == 'vote')
 async def process_start_voting(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     players = load_players()['players']
@@ -184,7 +241,7 @@ async def end_voting(message: types.Message):
     result = "🏆 **Результаты боя**\n\n"
     for i, p in enumerate(sorted_players, 1):
         awards = f" (MVP: {p['awards']['mvp']}, 1st: {p['awards']['place1']}, 2nd: {p['awards']['place2']}, 3rd: {p['awards']['place3']})"
-        result += f"{i}. **{p['name']}** — {p['stats']['avg_rating']:.2f}{awards}\n"
+        result += f"{i}. {p['name']} — {p['stats']['avg_rating']:.2f}{awards}\n"
     result += "\n🎖 **Награды**\n"
     if sorted_players: result += f"👑 MVP: {sorted_players[0]['name']}\n"
     if len(sorted_players) >= 2: result += f"🥇 1st: {sorted_players[1]['name']}\n"
@@ -202,7 +259,7 @@ async def start_map_voting(message: types.Message):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     for map_name in maps:
         keyboard.add(types.InlineKeyboardButton(map_name, callback_data=f"vote_map_{map_name}"))
-    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя (нажми на нужные):", reply_markup=keyboard)
+    await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя:", reply_markup=keyboard)
 
 # Обработка голосов за карты
 @dp.callback_query(lambda c: c.data.startswith('vote_map_'))
@@ -225,7 +282,7 @@ async def end_map_voting(message: types.Message):
     for i, (map_name, votes) in enumerate(sorted_maps, 1):
         result += f"{i}. {map_name} — {votes} голосов\n"
     await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
-    save_maps({map_name: 0 for map_name in maps_data})  # Сброс голосов
+    save_maps({map_name: 0 for map_name in maps_data})
 
 # Команда /top
 @dp.message(Command(commands=['top']))
@@ -234,7 +291,7 @@ async def top_players(message: types.Message):
     sorted_players = sorted(players, key=lambda p: p['stats'].get('avg_rating', 0), reverse=True)[:5]
     result = "🏆 **Топ-5 игроков по рейтингу**:\n"
     for i, p in enumerate(sorted_players, 1):
-        result += f"{i}. **{p['name']}** — {p['stats'].get('avg_rating', 0):.2f}\n"
+        result += f"{i}. {p['name']} — {p['stats'].get('avg_rating', 0):.2f}\n"
     await message.reply(result, parse_mode='Markdown')
 
 # Команда /my_stats
@@ -246,7 +303,7 @@ async def my_stats(message: types.Message):
         if p['id'] == user_id:
             stats = p['stats']
             awards = p['awards']
-            response = (f"🎖 **Твоя статистика**\n"
+            response = (f"📊 **Твоя статистика**\n"
                         f"Побед: {stats['wins']}\n"
                         f"Средний рейтинг: {stats['avg_rating']:.2f}\n"
                         f"MVP: {awards['mvp']} раз\n"
@@ -268,9 +325,6 @@ handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
 handler.register(app, path=WEBHOOK_PATH)
 setup_application(app, dp, bot=bot)
 
-if __name__ == '__main__':
-    port = int(os.getenv("PORT", 5000))
-    web.run_app(app, host='0.0.0.0', port=port)
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
     web.run_app(app, host='0.0.0.0', port=port)
