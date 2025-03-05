@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
@@ -43,7 +44,7 @@ def save_maps(maps_data):
         json.dump(maps_data, f, ensure_ascii=False, indent=4)
 
 # Команда /start
-@dp.message_handler(commands=['start'])
+@dp.message(Command(commands=['start']))
 async def send_welcome(message: types.Message):
     await message.reply("🎯 Привет, боец! Я бот твоей CS2-команды. Вот что я умею:\n"
                         "🔫 Управлять списком игроков\n"
@@ -53,7 +54,7 @@ async def send_welcome(message: types.Message):
                         "ℹ️ Админ управляет мной через команды. Напиши /help для списка!")
 
 # Команда /help
-@dp.message_handler(commands=['help'])
+@dp.message(Command(commands=['help']))
 async def send_help(message: types.Message):
     help_text = ("📜 **Список команд**:\n"
                  "/start — начать работу\n"
@@ -69,7 +70,7 @@ async def send_help(message: types.Message):
     await message.reply(help_text, parse_mode='Markdown')
 
 # Команда /add_player (админ)
-@dp.message_handler(commands=['add_player'])
+@dp.message(Command(commands=['add_player']))
 async def add_player(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -95,7 +96,7 @@ async def add_player(message: types.Message):
         await message.reply("❌ ID должен быть числом!")
 
 # Команда /remove_player (админ)
-@dp.message_handler(commands=['remove_player'])
+@dp.message(Command(commands=['remove_player']))
 async def remove_player(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -114,7 +115,7 @@ async def remove_player(message: types.Message):
         await message.reply("❌ ID должен быть числом!")
 
 # Команда /start_voting (админ)
-@dp.message_handler(commands=['start_voting'])
+@dp.message(Command(commands=['start_voting']))
 async def start_voting(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -124,7 +125,7 @@ async def start_voting(message: types.Message):
     await bot.send_message(GROUP_ID, "🔫 Голосование началось! Нажми кнопку, чтобы оценить игроков:", reply_markup=keyboard)
 
 # Обработка кнопки "Голосовать"
-@dp.callback_query_handler(lambda c: c.data == 'start_voting')
+@dp.callback_query(lambda c: c.data == 'start_voting')
 async def process_start_voting(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     players = load_players()['players']
@@ -140,7 +141,7 @@ async def process_start_voting(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, "Проверь личку для голосования!")
 
 # Сохранение оценок
-@dp.callback_query_handler(lambda c: c.data.startswith('rate_'))
+@dp.callback_query(lambda c: c.data.startswith('rate_'))
 async def process_rating(callback_query: types.CallbackQuery):
     data = callback_query.data.split('_')
     player_id = int(data[1])
@@ -154,7 +155,7 @@ async def process_rating(callback_query: types.CallbackQuery):
             return
 
 # Команда /end_voting (админ)
-@dp.message_handler(commands=['end_voting'])
+@dp.message(Command(commands=['end_voting']))
 async def end_voting(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -192,7 +193,7 @@ async def end_voting(message: types.Message):
     await bot.send_message(GROUP_ID, result, parse_mode='Markdown')
 
 # Команда /start_map_voting (админ)
-@dp.message_handler(commands=['start_map_voting'])
+@dp.message(Command(commands=['start_map_voting']))
 async def start_map_voting(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -204,7 +205,7 @@ async def start_map_voting(message: types.Message):
     await bot.send_message(GROUP_ID, "🗺 Выбери карты для следующего боя (нажми на нужные):", reply_markup=keyboard)
 
 # Обработка голосов за карты
-@dp.callback_query_handler(lambda c: c.data.startswith('vote_map_'))
+@dp.callback_query(lambda c: c.data.startswith('vote_map_'))
 async def process_map_voting(callback_query: types.CallbackQuery):
     map_name = callback_query.data.split('_')[2]
     maps_data = load_maps()
@@ -213,7 +214,7 @@ async def process_map_voting(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, f"Ты проголосовал за {map_name}!")
 
 # Команда /end_map_voting (админ)
-@dp.message_handler(commands=['end_map_voting'])
+@dp.message(Command(commands=['end_map_voting']))
 async def end_map_voting(message: types.Message):
     if message.from_user.id != ADMIN_ID:
         await message.reply("❌ У тебя нет доступа, боец!")
@@ -227,7 +228,7 @@ async def end_map_voting(message: types.Message):
     save_maps({map_name: 0 for map_name in maps_data})  # Сброс голосов
 
 # Команда /top
-@dp.message_handler(commands=['top'])
+@dp.message(Command(commands=['top']))
 async def top_players(message: types.Message):
     players = load_players()['players']
     sorted_players = sorted(players, key=lambda p: p['stats'].get('avg_rating', 0), reverse=True)[:5]
@@ -237,7 +238,7 @@ async def top_players(message: types.Message):
     await message.reply(result, parse_mode='Markdown')
 
 # Команда /my_stats
-@dp.message_handler(commands=['my_stats'])
+@dp.message(Command(commands=['my_stats']))
 async def my_stats(message: types.Message):
     user_id = message.from_user.id
     players = load_players()['players']
@@ -267,6 +268,9 @@ handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
 handler.register(app, path=WEBHOOK_PATH)
 setup_application(app, dp, bot=bot)
 
+if __name__ == '__main__':
+    port = int(os.getenv("PORT", 5000))
+    web.run_app(app, host='0.0.0.0', port=port)
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
     web.run_app(app, host='0.0.0.0', port=port)
