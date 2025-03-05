@@ -1,3 +1,20 @@
 {
-    "players": []
+    "players": [
+        {
+            "id": 267576019,
+            "name": "Lighthouse",
+            "ratings": [],
+            "played_last_game": true,
+            "awards": {
+                "mvp": 0,
+                "place1": 0,
+                "place2": 0,
+                "place3": 0
+            },
+            "stats": {
+                "avg_rating": 0,
+                "mvp_count": 0
+            }
+        }
+    ]
 }
