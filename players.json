@@ -228,7 +228,9 @@
         {
             "id": 1826445612,
             "name": "bert",
-            "ratings": [],
+            "ratings": [
+                9
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
