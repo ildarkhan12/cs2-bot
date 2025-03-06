@@ -3,10 +3,7 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [
-                9,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 1,
@@ -17,16 +14,13 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 1,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 471628332,
             "name": "NotFound",
-            "ratings": [
-                10,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -37,15 +31,13 @@
             "stats": {
                 "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 113405030,
             "name": "jkee",
-            "ratings": [
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -56,16 +48,13 @@
             "stats": {
                 "avg_rating": 0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 480892405,
             "name": "Fakha",
-            "ratings": [
-                6,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -77,16 +66,13 @@
             "stats": {
                 "avg_rating": 5.5,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 586935137,
             "name": "RodJER",
-            "ratings": [
-                9,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -98,16 +84,13 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 5449944462,
             "name": "Фея_Динь_Динь",
-            "ratings": [
-                9,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -119,16 +102,13 @@
             "stats": {
                 "avg_rating": 6.5,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 6839287337,
             "name": "ilnur.khalitov",
-            "ratings": [
-                7,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -140,16 +120,13 @@
             "stats": {
                 "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 1944823446,
             "name": "Bulatagai",
-            "ratings": [
-                8,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -161,7 +138,7 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             },
             "breakthrough_ratings": [
                 1
@@ -170,10 +147,7 @@
         {
             "id": 771664527,
             "name": "s6les",
-            "ratings": [
-                10,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -185,16 +159,13 @@
             "stats": {
                 "avg_rating": 7.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 495338782,
             "name": "Mukhamet21",
-            "ratings": [
-                8,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -206,16 +177,13 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 1152701195,
             "name": "Aza_GR",
-            "ratings": [
-                8,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -227,7 +195,7 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             },
             "breakthrough_ratings": [
                 1,
@@ -237,10 +205,7 @@
         {
             "id": 1492228669,
             "name": "KaRSaN",
-            "ratings": [
-                10,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -252,16 +217,13 @@
             "stats": {
                 "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 1826445612,
             "name": "bert",
-            "ratings": [
-                6,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -273,14 +235,14 @@
             "stats": {
                 "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 543403091,
             "name": "BuLLdozzer13",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -291,14 +253,14 @@
             "stats": {
                 "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 88242574,
             "name": "bagmanoff",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -309,16 +271,13 @@
             "stats": {
                 "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
             "id": 940398443,
             "name": "SulkySkirt",
-            "ratings": [
-                7,
-                10
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 1,
@@ -330,7 +289,7 @@
             "stats": {
                 "avg_rating": 10.0,
                 "mvp_count": 1,
-                "games_played": 1
+                "games_played": 2
             }
         },
         {
@@ -347,7 +306,8 @@
             },
             "stats": {
                 "avg_rating": 0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         }
     ]
