@@ -161,7 +161,9 @@
         {
             "id": 771664527,
             "name": "s6les",
-            "ratings": [],
+            "ratings": [
+                10
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
