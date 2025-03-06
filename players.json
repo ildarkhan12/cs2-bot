@@ -301,7 +301,9 @@
         {
             "id": 940398443,
             "name": "SulkySkirt",
-            "ratings": [],
+            "ratings": [
+                7
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 1,
