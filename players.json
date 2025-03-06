@@ -317,6 +317,23 @@
                 "mvp_count": 1,
                 "games_played": 1
             }
+        },
+        {
+            "id": 7660194671,
+            "name": "test",
+            "ratings": [],
+            "played_last_game": true,
+            "awards": {
+                "mvp": 0,
+                "place1": 0,
+                "place2": 0,
+                "place3": 0,
+                "breakthrough": 0
+            },
+            "stats": {
+                "avg_rating": 0,
+                "mvp_count": 0
+            }
         }
     ]
 }
