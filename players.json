@@ -43,7 +43,9 @@
         {
             "id": 113405030,
             "name": "jkee",
-            "ratings": [],
+            "ratings": [
+                10
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
