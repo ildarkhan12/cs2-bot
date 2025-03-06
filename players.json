@@ -13,7 +13,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 1
+                "mvp_count": 1,
+                "games_played": 1
             }
         },
         {
@@ -29,7 +30,8 @@
             },
             "stats": {
                 "avg_rating": 9.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -45,7 +47,8 @@
             },
             "stats": {
                 "avg_rating": 0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -62,7 +65,8 @@
             },
             "stats": {
                 "avg_rating": 5.5,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -79,7 +83,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -96,7 +101,8 @@
             },
             "stats": {
                 "avg_rating": 6.5,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -113,7 +119,8 @@
             },
             "stats": {
                 "avg_rating": 9.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -130,7 +137,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             },
             "breakthrough_ratings": [
                 1
@@ -150,7 +158,8 @@
             },
             "stats": {
                 "avg_rating": 7.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -167,7 +176,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -184,7 +194,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             },
             "breakthrough_ratings": [
                 1,
@@ -205,7 +216,8 @@
             },
             "stats": {
                 "avg_rating": 8.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -222,7 +234,8 @@
             },
             "stats": {
                 "avg_rating": 9.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -239,7 +252,8 @@
             },
             "stats": {
                 "avg_rating": 9.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -256,7 +270,8 @@
             },
             "stats": {
                 "avg_rating": 9.0,
-                "mvp_count": 0
+                "mvp_count": 0,
+                "games_played": 1
             }
         },
         {
@@ -273,7 +288,8 @@
             },
             "stats": {
                 "avg_rating": 10.0,
-                "mvp_count": 1
+                "mvp_count": 1,
+                "games_played": 1
             }
         }
     ]
