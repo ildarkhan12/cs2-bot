@@ -78,7 +78,9 @@
         {
             "id": 586935137,
             "name": "RodJER",
-            "ratings": [],
+            "ratings": [
+                9
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
