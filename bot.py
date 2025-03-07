@@ -1,27 +1,26 @@
 import os
 import json
 import asyncio
-import subprocess
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
 # Токен бота и конфигурация вебхука
-TOKEN = os.getenv('TOKEN', '7905448986:AAG5rXLzIjPLK6ayuah9Hsn2VdJKyUPqNPQ')  # Укажи свой токен в переменной окружения
-WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'  # Укажи свой домен Render
+TOKEN = os.getenv('TOKEN', '7905448986:AAG5rXLzIjPLK6ayuah9Hsn2VdJKyUPqNPQ')
+WEBHOOK_HOST = 'https://cs2-bot-qhok.onrender.com'
 WEBHOOK_PATH = f'/{TOKEN}'
 WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
-GIT_REPO_URL = f"https://{os.getenv('GIT_TOKEN')}@github.com/ildarkhan12/cs2-bot.git"  # Укажи токен GitHub в переменной окружения
+GIT_REPO_URL = f"https://{os.getenv('GIT_TOKEN')}@github.com/ildarkhan12/cs2-bot.git"
 
 # Инициализация бота
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Твои ID
-ADMIN_ID = 113405030  # Твой Telegram ID
-GROUP_ID = -1002484381098  # ID группы
-bot_username = "CS2RatingBot"  # Замени на имя своего бота, если отличается
+ADMIN_ID = 113405030
+GROUP_ID = -1002484381098
+bot_username = "CS2RatingBot"
 
 # Глобальные переменные
 voting_active = False
@@ -31,10 +30,41 @@ voting_message_id = None
 breakthrough_message_id = None
 
 # Функции работы с данными
+def migrate_players_data(data):
+    """Миграция старой структуры players.json в новую с званиями."""
+    for player in data['players']:
+        if 'stats' not in player:
+            player['stats'] = {}
+        if 'awards' not in player:
+            player['awards'] = {"mvp": 0, "place1": 0, "place2": 0, "place3": 0, "breakthrough": 0}
+        
+        if 'avg_rating' in player['stats']:
+            del player['stats']['avg_rating']
+        player['stats'].setdefault('mvp_count', player['awards'].get('mvp', 0))
+        player['stats'].setdefault('games_played', 0)
+        player['stats'].setdefault('votes_cast', 0)
+        
+        if 'rank_points' not in player['stats']:
+            points = player['stats']['games_played'] * 5
+            points += player['awards'].get('mvp', 0) * 25
+            points += player['awards'].get('place1', 0) * 20
+            points += player['awards'].get('place2', 0) * 15
+            points += player['awards'].get('place3', 0) * 12
+            points += player['awards'].get('breakthrough', 0) * 10
+            player['stats']['rank_points'] = points
+        update_rank(player)
+        
+        player['awards'].setdefault('breakthrough', 0)
+
+    return data
+
 def load_players():
     try:
         with open('players.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+            migrated_data = migrate_players_data(data)
+            save_players(migrated_data)
+            return migrated_data
     except FileNotFoundError:
         return {"players": []}
 
@@ -166,7 +196,7 @@ async def start_voting_menu(callback_query: types.CallbackQuery):
         player['ratings'] = []
         if player['played_last_game']:
             player['stats']['games_played'] = player['stats'].get('games_played', 0) + 1
-            player['stats']['rank_points'] = player['stats'].get('rank_points', 0) + 5  # Очки за участие
+            player['stats']['rank_points'] = player['stats'].get('rank_points', 0) + 5
             update_rank(player)
     save_players({"players": players})
     
@@ -186,7 +216,7 @@ async def mark_absent(callback_query: types.CallbackQuery):
     for player in players_data['players']:
         if player['id'] == player_id:
             player['played_last_game'] = False
-            player['stats']['rank_points'] = player['stats'].get('rank_points', 0) - 5  # Убираем очки за участие
+            player['stats']['rank_points'] = player['stats'].get('rank_points', 0) - 5
             update_rank(player)
             break
     save_players(players_data)
@@ -365,7 +395,7 @@ async def check_voting_complete():
     sorted_players = sorted([p for p in players if p['ratings']], key=lambda p: sum(p['ratings']) / len(p['ratings']), reverse=True)
     awards_notifications = []
     points_map = {1: 25, 2: 20, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 3, 10: 2}
-    for i, player in enumerate(sorted_players[:10], 1):  # Топ-10
+    for i, player in enumerate(sorted_players[:10], 1):
         if i == 1:
             player['awards']['mvp'] += 1
             player['stats']['mvp_count'] += 1
@@ -467,7 +497,7 @@ async def process_breakthrough_rating(callback_query: types.CallbackQuery):
         if player['id'] == player_id:
             if 'breakthrough_ratings' not in player:
                 player['breakthrough_ratings'] = []
-            player['breakthrough_ratings'].append(1)  # Один голос = 1 балл
+            player['breakthrough_ratings'].append(1)
             save_players(players_data)
             await bot.edit_message_text(
                 chat_id=user_id,
@@ -531,11 +561,11 @@ async def check_breakthrough_voting_complete():
     return True
 
 # Настройка вебхука и запуск
-async def on_startup(_):
+async def on_startup(dispatcher: Dispatcher):
     await bot.set_webhook(WEBHOOK_URL)
     print(f"Бот запущен с вебхуком: {WEBHOOK_URL}")
 
-async def on_shutdown(_):
+async def on_shutdown(dispatcher: Dispatcher):
     await bot.delete_webhook()
     print("Бот остановлен")
 
@@ -545,16 +575,16 @@ async def main():
     webhook_request_handler.register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
     
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8080)))
+    await site.start()
+    
     try:
-        await dp.start_polling(bot)
+        await asyncio.Event().wait()  # Держим приложение запущенным
     finally:
         await runner.cleanup()
 
