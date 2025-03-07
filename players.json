@@ -4,58 +4,67 @@
             "id": 267576019,
             "name": "Lighthouse",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
-                "mvp": 1,
+                "mvp": 0,
                 "place1": 0,
                 "place2": 0,
-                "place3": 0
+                "place3": 0,
+                "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
-                "mvp_count": 1,
-                "games_played": 2
+                "mvp_count": 0,
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 471628332,
             "name": "NotFound",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
-                "place1": 2,
+                "place1": 0,
                 "place2": 0,
-                "place3": 0
+                "place3": 0,
+                "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 113405030,
             "name": "jkee",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
-                "place2": 1,
-                "place3": 0
+                "place2": 0,
+                "place3": 0,
+                "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 480892405,
             "name": "Fakha",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -64,16 +73,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 5.5,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 586935137,
             "name": "RodJER",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -82,16 +93,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 5449944462,
             "name": "Фея_Динь_Динь",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -100,34 +113,38 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 6.5,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 6839287337,
             "name": "ilnur.khalitov",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
-                "place2": 1,
+                "place2": 0,
                 "place3": 0,
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 1944823446,
             "name": "Bulatagai",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -136,19 +153,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 2
-            },
-            "breakthrough_ratings": [
-                1
-            ]
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
+            }
         },
         {
             "id": 771664527,
             "name": "s6les",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -157,16 +173,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 7.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 495338782,
             "name": "Mukhamet21",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -175,16 +193,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 1152701195,
             "name": "Aza_GR",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -193,20 +213,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 2
-            },
-            "breakthrough_ratings": [
-                1,
-                1
-            ]
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
+            }
         },
         {
             "id": 1492228669,
             "name": "KaRSaN",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -215,34 +233,38 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 8.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 1826445612,
             "name": "bert",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
                 "place2": 0,
-                "place3": 1,
+                "place3": 0,
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 543403091,
             "name": "BuLLdozzer13",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -251,16 +273,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 88242574,
             "name": "bagmanoff",
             "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -269,34 +293,18 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 9.0,
                 "mvp_count": 0,
-                "games_played": 2
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         },
         {
             "id": 940398443,
             "name": "SulkySkirt",
             "ratings": [],
-            "played_last_game": true,
-            "awards": {
-                "mvp": 1,
-                "place1": 0,
-                "place2": 0,
-                "place3": 0,
-                "breakthrough": 0
-            },
-            "stats": {
-                "avg_rating": 10.0,
-                "mvp_count": 1,
-                "games_played": 2
-            }
-        },
-        {
-            "id": 7660194671,
-            "name": "test",
-            "ratings": [],
-            "played_last_game": true,
+            "played_last_game": false,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -305,9 +313,31 @@
                 "breakthrough": 0
             },
             "stats": {
-                "avg_rating": 0,
                 "mvp_count": 0,
-                "games_played": 1
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
+            }
+        },
+        {
+            "id": 7660194671,
+            "name": "test",
+            "ratings": [],
+            "played_last_game": false,
+            "awards": {
+                "mvp": 0,
+                "place1": 0,
+                "place2": 0,
+                "place3": 0,
+                "breakthrough": 0
+            },
+            "stats": {
+                "mvp_count": 0,
+                "games_played": 0,
+                "votes_cast": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
             }
         }
     ]
