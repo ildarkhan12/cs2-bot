@@ -821,7 +821,6 @@ async def default_callback_handler(callback_query: types.CallbackQuery):
     logger.info("Необработанный callback: %s от пользователя %s", callback_query.data, callback_query.from_user.id)
     await bot.answer_callback_query(callback_query.id, "Команда не распознана!")
 
-
 # --- Настройка вебхука и запуск приложения ---
 
 async def health_check(request):
@@ -829,7 +828,12 @@ async def health_check(request):
 
 async def on_startup(dispatcher: Dispatcher):
     await bot.set_webhook(WEBHOOK_URL)
-    logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
+    webhook_info = await bot.get_webhook_info()
+    logger.info("Webhook info: %s", webhook_info)
+    if webhook_info.url != WEBHOOK_URL:
+        logger.error("Webhook не установлен корректно!")
+    else:
+        logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
 async def on_shutdown(dispatcher: Dispatcher):
     await bot.delete_webhook()
@@ -847,11 +851,22 @@ async def main():
     
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8080)))
+    port = int(os.getenv('PORT', 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    logger.info("Сервер запущен на порту %s", os.getenv('PORT', 8080))
+    logger.info("Сервер запущен на порту %s", port)
     
     try:
-        await asyncio.Event().wait()
+        await asyncio.Event().wait()  # Держим сервер запущенным
+    except asyncio.CancelledError:
+        logger.info("Сервер остановлен")
     finally:
         await runner.cleanup()
+
+if __name__ == '__main__':
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Приложение остановлено пользователем")
+    except Exception as e:
+        logger.exception("Ошибка при запуске приложения: %s", e)
