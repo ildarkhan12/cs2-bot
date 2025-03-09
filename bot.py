@@ -623,6 +623,9 @@ async def check_breakthrough_voting_complete():
 
 # --- Настройка вебхука и запуск приложения ---
 
+async def health_check(request):
+    return web.Response(text="OK", status=200)
+
 async def on_startup(dispatcher: Dispatcher):
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
@@ -635,6 +638,7 @@ async def main():
     app = web.Application()
     webhook_request_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
     webhook_request_handler.register(app, path=WEBHOOK_PATH)
+    app.router.add_get('/', health_check)  # Health check для Render
     setup_application(app, dp, bot=bot)
     
     dp.startup.register(on_startup)
