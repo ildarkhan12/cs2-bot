@@ -161,19 +161,9 @@ async def update_timer(chat_id, message_id, duration, voting_type="основн�
 
 # --- Команды и обработчики ---
 
-@dp.message(Command(commands=['start']))
-async def send_welcome(message: types.Message):
-    if message.chat.type != "private":
-        group_greeting = (
-            "Салам, боец!\n"
-            "Я бот вашей CS2-тусовки.\n"
-            "ℹ️ Пошли в ЛС для управления:"
-        )
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Перейти в ЛС", url=f"t.me/{bot_username}")]
-        ])
-        await message.reply(group_greeting, reply_markup=keyboard)
-        return
+@dp.callback_query(lambda c: c.data == 'start')
+async def start_callback(callback_query: types.CallbackQuery):
+    logger.info("Получен callback для 'start' от пользователя %s", callback_query.from_user.id)
     welcome_text = (
         "Салам, боец!\n"
         "Я бот вашей CS2-тусовки. Выбери действие:"
@@ -184,7 +174,7 @@ async def send_welcome(message: types.Message):
             types.InlineKeyboardButton(text="Моя статистика", callback_data="my_stats")
         ]
     ]
-    if message.from_user.id == ADMIN_ID:
+    if callback_query.from_user.id == ADMIN_ID:
         inline_keyboard.extend([
             [
                 types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
@@ -193,8 +183,19 @@ async def send_welcome(message: types.Message):
         ])
     inline_keyboard.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start")])
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await message.reply(welcome_text, reply_markup=keyboard)
-    logger.info("Отправлено приветственное сообщение пользователю %s", message.from_user.id)
+    try:
+        await bot.edit_message_text(
+            chat_id=callback_query.from_user.id,
+            message_id=callback_query.message.message_id,
+            text=welcome_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        logger.warning("Не удалось отредактировать сообщение, отправляем новое: %s", e)
+        await bot.send_message(callback_query.from_user.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
+    await bot.answer_callback_query(callback_query.id)
+    logger.info("Меню 'start' отправлено пользователю %s через callback", callback_query.from_user.id)
 
 @dp.callback_query(lambda c: c.data == 'help')
 async def help_handler(callback_query: types.CallbackQuery):
@@ -219,27 +220,37 @@ async def help_handler(callback_query: types.CallbackQuery):
 async def my_stats_callback(callback_query: types.CallbackQuery):
     logger.info("Получен callback для 'my_stats' от пользователя %s", callback_query.from_user.id)
     user_id = callback_query.from_user.id
-    players_data = await load_players()
-    player = next((p for p in players_data['players'] if p['id'] == user_id), None)
-    if player:
-        stats = player['stats']
-        awards = player['awards']
-        response = (
-            "*Ваша статистика:*\n\n"
-            f"• *Звание:* {stats.get('rank', 'Рядовой')}\n"
-            f"• *Очки:* {stats.get('rank_points', 0)}\n"
-            f"• *Игр сыграно:* {stats.get('games_played', 0)}\n"
-            f"• *MVP:* {awards.get('mvp', 0)} раз\n"
-            f"• *1st:* {awards.get('place1', 0)} раз\n"
-            f"• *2nd:* {awards.get('place2', 0)} раз\n"
-            f"• *3rd:* {awards.get('place3', 0)} раз\n"
-            f"• *Прорыв вечера:* {awards.get('breakthrough', 0)} раз\n"
-        )
-        await bot.send_message(callback_query.from_user.id, response, parse_mode="Markdown")
-    else:
-        await bot.send_message(callback_query.from_user.id, "❌ Вы не в списке игроков!")
-    await bot.answer_callback_query(callback_query.id)
-    logger.info("Статистика запрошена через кнопку пользователем %s", user_id)
+    try:
+        logger.info("Загружаем данные игроков для пользователя %s", user_id)
+        players_data = await load_players()
+        logger.info("Данные игроков загружены: %s игроков", len(players_data['players']))
+        
+        player = next((p for p in players_data['players'] if p['id'] == user_id), None)
+        if player:
+            stats = player['stats']
+            awards = player['awards']
+            response = (
+                "*Ваша статистика:*\n\n"
+                f"• *Звание:* {stats.get('rank', 'Рядовой')}\n"
+                f"• *Очки:* {stats.get('rank_points', 0)}\n"
+                f"• *Игр сыграно:* {stats.get('games_played', 0)}\n"
+                f"• *MVP:* {awards.get('mvp', 0)} раз\n"
+                f"• *1st:* {awards.get('place1', 0)} раз\n"
+                f"• *2nd:* {awards.get('place2', 0)} раз\n"
+                f"• *3rd:* {awards.get('place3', 0)} раз\n"
+                f"• *Прорыв вечера:* {awards.get('breakthrough', 0)} раз\n"
+            )
+            logger.info("Отправляем статистику пользователю %s", user_id)
+            await bot.send_message(callback_query.from_user.id, response, parse_mode="Markdown")
+        else:
+            logger.info("Пользователь %s не найден в списке игроков", user_id)
+            await bot.send_message(callback_query.from_user.id, "❌ Вы не в списке игроков!")
+        
+        await bot.answer_callback_query(callback_query.id)
+        logger.info("Статистика успешно запрошена через кнопку пользователем %s", user_id)
+    except Exception as e:
+        logger.exception("Ошибка в обработке 'my_stats' для пользователя %s: %s", user_id, str(e))
+        await bot.answer_callback_query(callback_query.id, text="Произошла ошибка, попробуйте позже!")
 
 @dp.callback_query(lambda c: c.data == 'manage_players')
 async def manage_players_handler(callback_query: types.CallbackQuery):
