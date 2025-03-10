@@ -161,6 +161,42 @@ async def update_timer(chat_id, message_id, duration, voting_type="основн�
 
 # --- Команды и обработчики ---
 
+@dp.message(Command(commands=['start']))
+async def send_welcome(message: types.Message):
+    if message.chat.type != "private":
+        group_greeting = (
+            "Салам, боец!\n"
+            "Я бот вашей CS2-тусовки.\n"
+            "ℹ️ Пошли в ЛС для управления:"
+        )
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="Перейти в ЛС", url=f"t.me/{bot_username}")]
+        ])
+        await message.reply(group_greeting, reply_markup=keyboard)
+        return
+    welcome_text = (
+        "Салам, боец!\n"
+        "Я бот вашей CS2-тусовки. Выбери действие:"
+    )
+    inline_keyboard = [
+        [
+            types.InlineKeyboardButton(text="Список команд", callback_data="help"),
+            types.InlineKeyboardButton(text="Моя статистика", callback_data="my_stats")
+        ]
+    ]
+    if message.from_user.id == ADMIN_ID:
+        inline_keyboard.extend([
+            [
+                types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
+                types.InlineKeyboardButton(text="Голосование", callback_data="start_voting_menu")
+            ],
+            [types.InlineKeyboardButton(text="Список игроков", callback_data="list_players")]
+        ])
+    inline_keyboard.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start")])
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await message.reply(welcome_text, reply_markup=keyboard)
+    logger.info("Отправлено приветственное сообщение пользователю %s", message.from_user.id)
+
 @dp.callback_query(lambda c: c.data == 'start')
 async def start_callback(callback_query: types.CallbackQuery):
     logger.info("Получен callback для 'start' от пользователя %s", callback_query.from_user.id)
@@ -179,7 +215,8 @@ async def start_callback(callback_query: types.CallbackQuery):
             [
                 types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
                 types.InlineKeyboardButton(text="Голосование", callback_data="start_voting_menu")
-            ]
+            ],
+            [types.InlineKeyboardButton(text="Список игроков", callback_data="list_players")]
         ])
     inline_keyboard.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start")])
     keyboard = types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
@@ -196,6 +233,41 @@ async def start_callback(callback_query: types.CallbackQuery):
         await bot.send_message(callback_query.from_user.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
     await bot.answer_callback_query(callback_query.id)
     logger.info("Меню 'start' отправлено пользователю %s через callback", callback_query.from_user.id)
+
+@dp.callback_query(lambda c: c.data == 'list_players')
+async def list_players_callback(callback_query: types.CallbackQuery):
+    logger.info("Получен callback для 'list_players' от пользователя %s", callback_query.from_user.id)
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        logger.info("Пользователь %s попытался запросить список игроков без прав администратора", callback_query.from_user.id)
+        return
+    
+    try:
+        logger.info("Загружаем данные игроков для списка")
+        players_data = await load_players()
+        players = players_data['players']
+        
+        if not players:
+            response = "❌ Список игроков пуст!"
+        else:
+            response = "*Список игроков:*\n\n"
+            for i, player in enumerate(players, 1):
+                response += (
+                    f"{i}. *{player['name']}* (ID: {player['id']})\n"
+                    f"   Звание: {player['stats'].get('rank', 'Рядовой')}, "
+                    f"Очки: {player['stats'].get('rank_points', 0)}\n"
+                )
+        
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start")]
+        ])
+        await bot.send_message(callback_query.from_user.id, response, parse_mode="Markdown", reply_markup=keyboard)
+        await bot.answer_callback_query(callback_query.id)
+        logger.info("Список игроков отправлен администратору %s", callback_query.from_user.id)
+    except Exception as e:
+        logger.exception("Ошибка при выводе списка игроков: %s", str(e))
+        await bot.send_message(callback_query.from_user.id, "❌ Произошла ошибка при загрузке списка игроков!")
+        await bot.answer_callback_query(callback_query.id)
 
 @dp.callback_query(lambda c: c.data == 'help')
 async def help_handler(callback_query: types.CallbackQuery):
