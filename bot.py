@@ -49,10 +49,12 @@ def load_players() -> Dict[str, List[Dict]]:
     try:
         with open('players.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-            return migrate_players_data(data)
+            return data
     except FileNotFoundError:
-        logger.warning("Файл players.json не найден, инициализируется пустой список")
-        return {"players": []}
+        logger.warning("Файл players.json не найден, инициализируется с пустым списком")
+        default_data = {"players": []}
+        save_players(default_data)
+        return default_data
     except json.JSONDecodeError as e:
         logger.error("Ошибка парсинга players.json: %s", e)
         return {"players": []}
@@ -67,28 +69,6 @@ def save_players(data: Dict[str, List[Dict]]) -> None:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
         logger.exception("Ошибка сохранения players.json: %s", e)
-
-def migrate_players_data(data: Dict[str, List[Dict]]) -> Dict[str, List[Dict]]:
-    """Миграция структуры данных игроков для обратной совместимости."""
-    for player in data['players']:
-        player.setdefault('stats', {})
-        player.setdefault('awards', {"mvp": 0, "place1": 0, "place2": 0, "place3": 0, "breakthrough": 0})
-        if 'avg_rating' in player['stats']:
-            del player['stats']['avg_rating']
-        player['stats'].setdefault('mvp_count', player['awards'].get('mvp', 0))
-        player['stats'].setdefault('games_played', 0)
-        player['stats'].setdefault('votes_cast', 0)
-        if 'rank_points' not in player['stats']:
-            points = (player['stats']['games_played'] * 5 +
-                      player['awards'].get('mvp', 0) * 25 +
-                      player['awards'].get('place1', 0) * 20 +
-                      player['awards'].get('place2', 0) * 15 +
-                      player['awards'].get('place3', 0) * 12 +
-                      player['awards'].get('breakthrough', 0) * 10)
-            player['stats']['rank_points'] = points
-        update_rank(player)
-        player['awards'].setdefault('breakthrough', 0)
-    return data
 
 def update_rank(player: Dict) -> None:
     """Обновляет звание игрока на основе очков."""
@@ -562,8 +542,7 @@ async def finish_voting_user(callback_query: types.CallbackQuery):
 
 async def calculate_voting_results(players_data: Dict) -> tuple:
     participants = [p for p in players_data['players'] if p['played_last_game']]
-    # Здесь пока нет полной реализации рейтинга, поэтому просто распределяем награды
-    sorted_players = participants  # Заменить на реальную сортировку по рейтингам
+    sorted_players = participants  # Заглушка, так как рейтинг пока не реализован
     points_map = {1: 25, 2: 20, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 3, 10: 2}
     awards_notifications = []
     for i, player in enumerate(sorted_players[:10], 1):
@@ -765,11 +744,11 @@ async def default_callback_handler(callback_query: types.CallbackQuery):
 async def health_check(request):
     return web.Response(text="OK", status=200)
 
-async def on_startup(_):
+async def on_startup(dispatcher):
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
-async def on_shutdown(_):
+async def on_shutdown(dispatcher):
     await bot.delete_webhook()
     logger.info("Бот остановлен")
 
