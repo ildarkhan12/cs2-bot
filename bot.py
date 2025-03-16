@@ -574,7 +574,7 @@ async def stop_voting(callback_query: types.CallbackQuery):
         await bot.unpin_chat_message(GROUP_ID, voting_state.voting_message_id)
         await bot.send_message(GROUP_ID, "🏆 Голосование остановлено администратором!")
     if voting_state.voting_timer_message_id:
-        await bot.delete_message(GROUP_ID, voting_state.voting_timer_message_id)
+        await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.voting_timer_message_id)
         voting_state.voting_timer_message_id = None
     for participant_id in voting_state.participants:
         await bot.send_message(participant_id, "🏆 Голосование было остановлено администратором!")
@@ -677,7 +677,7 @@ async def check_voting_complete():
     if voting_state.voting_message_id:
         await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.voting_message_id)
     if voting_state.voting_timer_message_id:
-        await bot.delete_message(chat_id=GROUP_ID, voting_state.voting_timer_message_id)
+        await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.voting_timer_message_id)
         voting_state.voting_timer_message_id = None
     for participant_id in voting_state.participants:
         await bot.send_message(participant_id, "🏆 Голосование завершено! Проверьте результаты в группе!")
@@ -735,10 +735,10 @@ async def stop_breakthrough(callback_query: types.CallbackQuery):
         return
     voting_state.breakthrough_active = False
     if voting_state.breakthrough_message_id:
-        await bot.unpin_chat_message(GROUP_ID, voting_state.breakthrough_message_id)
+        await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_message_id)
         await bot.send_message(GROUP_ID, "🚀 Голосование за 'Прорыв вечера' остановлено администратором!")
     if voting_state.breakthrough_timer_message_id:
-        await bot.delete_message(GROUP_ID, voting_state.breakthrough_timer_message_id)
+        await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
         voting_state.breakthrough_timer_message_id = None
     for participant_id in voting_state.participants:
         await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' было остановлено администратором!")
@@ -804,7 +804,7 @@ async def check_breakthrough_voting_complete():
         if voting_state.breakthrough_message_id:
             await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_message_id)
         if voting_state.breakthrough_timer_message_id:
-            await bot.delete_message(chat_id=GROUP_ID, voting_state.breakthrough_timer_message_id)
+            await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
             voting_state.breakthrough_timer_message_id = None
         return True
     if len(voting_state.voted_breakthrough_users) < len(participants):
@@ -828,7 +828,7 @@ async def check_breakthrough_voting_complete():
     if voting_state.breakthrough_message_id:
         await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_message_id)
     if voting_state.breakthrough_timer_message_id:
-        await bot.delete_message(chat_id=GROUP_ID, voting_state.breakthrough_timer_message_id)
+        await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
         voting_state.breakthrough_timer_message_id = None
     for participant_id in voting_state.participants:
         await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' завершено! Проверьте результаты в группе!")
