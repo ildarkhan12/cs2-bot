@@ -2,7 +2,8 @@ import os
 import json
 import asyncio
 import logging
-import subprocess
+import base64
+import requests
 from typing import Dict, List, Optional
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -24,7 +25,8 @@ BOT_USERNAME = "CS2_Team_Bot"
 AUTO_FINISH_DELAY = 86400  # 24 часа в секундах
 GIT_USERNAME = os.getenv('GIT_USERNAME', 'ildarkhan12')
 GIT_TOKEN = os.getenv('GITHUB_TOKEN')
-REPO_URL = f"https://{GIT_USERNAME}:{GIT_TOKEN}@github.com/{GIT_USERNAME}/cs2-bot.git"
+REPO_NAME = 'cs2-bot'
+GITHUB_API_URL = f'https://api.github.com/repos/{GIT_USERNAME}/{REPO_NAME}/contents/players.json'
 
 # Инициализация бота и диспетчера
 bot = Bot(token=TOKEN)
@@ -64,10 +66,8 @@ def load_players() -> Dict[str, List[Dict]]:
             logger.info("players.json успешно загружен из файла")
             return data
     except FileNotFoundError:
-        logger.warning("Файл players.json не найден, инициализируется с пустым списком")
-        default_data = {"players": []}
-        save_players(default_data)
-        return default_data
+        logger.warning("Файл players.json не найден локально, пытаемся загрузить из GitHub")
+        return asyncio.run(fetch_players_from_github())
     except json.JSONDecodeError as e:
         logger.error("Ошибка парсинга players.json: %s", e)
         return {"players": []}
@@ -82,50 +82,73 @@ def save_players(data: Dict[str, List[Dict]]) -> None:
             json.dump(data, f, ensure_ascii=False, indent=4)
         players_data_cache = data
         logger.info("players.json успешно сохранён локально")
-        asyncio.create_task(save_players_to_git())
+        asyncio.create_task(save_players_to_github(data))
     except Exception as e:
         logger.exception("Ошибка сохранения players.json: %s", e)
 
-async def save_players_to_git() -> None:
-    if not GIT_TOKEN or not GIT_USERNAME:
-        logger.error("GIT_TOKEN или GIT_USERNAME не установлены, пропускаем git push")
-        return
+async def fetch_players_from_github() -> Dict[str, List[Dict]]:
+    if not GIT_TOKEN:
+        logger.error("GITHUB_TOKEN не установлен, невозможно загрузить players.json")
+        default_data = {"players": []}
+        save_players(default_data)
+        return default_data
+    headers = {
+        'Authorization': f'token {GIT_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
     try:
-        # Проверяем, существует ли .git, и инициализируем, если нет
-        if not os.path.exists('.git'):
-            logger.info("Инициализируем новый git-репозиторий")
-            subprocess.run(["git", "init"], check=True, capture_output=True, text=True)
-            subprocess.run(["git", "remote", "add", "origin", REPO_URL], check=True, capture_output=True, text=True)
-        
-        # Настраиваем git
-        subprocess.run(["git", "config", "--global", "user.name", GIT_USERNAME], check=True, capture_output=True, text=True)
-        subprocess.run(["git", "config", "--global", "user.email", f"{GIT_USERNAME}@users.noreply.github.com"], check=True, capture_output=True, text=True)
-        
-        # Добавляем файл
-        subprocess.run(["git", "add", "players.json"], check=True, capture_output=True, text=True)
-        
-        # Проверяем, есть ли изменения для коммита
-        commit_result = subprocess.run(["git", "commit", "-m", "Update players.json"], check=False, capture_output=True, text=True)
-        if commit_result.returncode == 0:
-            # Синхронизируем с удалённым репозиторием
-            pull_result = subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=False, capture_output=True, text=True)
-            if pull_result.returncode != 0:
-                logger.warning("Ошибка при выполнении git pull: %s\nВывод: %s", pull_result.stderr, pull_result.stdout)
-                # Если pull не удался, пробуем reset и повторно добавить изменения
-                subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True, text=True)
-                subprocess.run(["git", "reset", "--hard", "origin/main"], check=True, capture_output=True, text=True)
-                subprocess.run(["git", "add", "players.json"], check=True, capture_output=True, text=True)
-                subprocess.run(["git", "commit", "-m", "Update players.json after reset"], check=True, capture_output=True, text=True)
-            
-            # Пушим изменения
-            push_result = subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True, text=True)
-            logger.info("players.json успешно сохранён в Git-репозиторий: %s", push_result.stdout)
+        response = requests.get(GITHUB_API_URL, headers=headers)
+        if response.status_code == 200:
+            content = response.json()['content']
+            decoded_content = base64.b64decode(content).decode('utf-8')
+            data = json.loads(decoded_content)
+            with open('players.json', 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logger.info("players.json успешно загружен из GitHub")
+            return data
+        elif response.status_code == 404:
+            logger.warning("players.json не найден в репозитории, создаём новый")
+            default_data = {"players": []}
+            save_players(default_data)
+            return default_data
         else:
-            logger.info("Нет изменений для коммита в players.json: %s", commit_result.stdout)
-    except subprocess.CalledProcessError as e:
-        logger.error("Ошибка при выполнении git-команды: %s\nВывод: %s\nОшибка: %s", e, e.stdout, e.stderr)
+            logger.error("Ошибка загрузки players.json из GitHub: %s", response.text)
+            return {"players": []}
     except Exception as e:
-        logger.exception("Неизвестная ошибка при сохранении в git: %s", e)
+        logger.exception("Ошибка при загрузке players.json из GitHub: %s", e)
+        return {"players": []}
+
+async def save_players_to_github(data: Dict[str, List[Dict]]) -> None:
+    if not GIT_TOKEN:
+        logger.error("GITHUB_TOKEN не установлен, пропускаем сохранение в GitHub")
+        return
+    headers = {
+        'Authorization': f'token {GIT_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    try:
+        # Получаем текущий SHA файла (если он существует)
+        response = requests.get(GITHUB_API_URL, headers=headers)
+        sha = response.json().get('sha') if response.status_code == 200 else None
+
+        # Подготовка данных для отправки
+        content = base64.b64encode(json.dumps(data, ensure_ascii=False, indent=4).encode('utf-8')).decode('utf-8')
+        payload = {
+            'message': 'Update players.json',
+            'content': content,
+            'branch': 'main'
+        }
+        if sha:
+            payload['sha'] = sha
+
+        # Отправляем обновление
+        response = requests.put(GITHUB_API_URL, headers=headers, json=payload)
+        if response.status_code in [200, 201]:
+            logger.info("players.json успешно сохранён в GitHub")
+        else:
+            logger.error("Ошибка сохранения players.json в GitHub: %s", response.text)
+    except Exception as e:
+        logger.exception("Ошибка при сохранении в GitHub: %s", e)
 
 def update_rank(player: Dict) -> None:
     points = player['stats'].get('rank_points', 0)
@@ -1053,27 +1076,10 @@ async def health_check(request):
     return web.Response(text="OK", status=200)
 
 async def on_startup(dispatcher):
-    # При старте проверяем наличие players.json и инициализируем git
-    if not os.path.exists('.git'):
-        logger.info("Инициализируем git-репозиторий при старте")
-        try:
-            subprocess.run(["git", "init"], check=True, capture_output=True, text=True)
-            subprocess.run(["git", "remote", "add", "origin", REPO_URL], check=True, capture_output=True, text=True)
-            subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True, text=True)
-            subprocess.run(["git", "checkout", "-b", "main", "origin/main"], check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            logger.error("Ошибка при инициализации git: %s\nВывод: %s", e.stderr, e.stdout)
-            save_players({"players": []})  # Создаём пустой файл, если git не настроен
+    # При старте загружаем players.json из GitHub, если его нет локально
     if not os.path.exists('players.json'):
-        logger.info("players.json отсутствует, пытаемся загрузить из репозитория")
-        try:
-            subprocess.run(["git", "pull", "origin", "main"], check=True, capture_output=True, text=True)
-            if not os.path.exists('players.json'):
-                logger.info("players.json не найден в репозитории, создаём новый")
-                save_players({"players": []})
-        except subprocess.CalledProcessError as e:
-            logger.error("Ошибка при загрузке из git: %s\nВывод: %s", e.stderr, e.stdout)
-            save_players({"players": []})
+        logger.info("players.json отсутствует локально, загружаем из GitHub")
+        await fetch_players_from_github()
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
@@ -1096,7 +1102,7 @@ async def main():
     
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.getenv('PORT', 10000))
+    port = int(os.getenv('PORT', 8080))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     logger.info("Сервер запущен на порту %s", port)
