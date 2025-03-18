@@ -579,9 +579,13 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id)
         return
     
-    # Сбрасываем рейтинги для всех участников текущего голосования
-    for p in participants:
-        p['ratings'] = []
+    # Обновляем played_last_game для участников текущего голосования
+    for p in players_data['players']:
+        was_played = p['played_last_game']
+        p['played_last_game'] = p['id'] in [player['id'] for player in participants]
+        p['ratings'] = []  # Сбрасываем рейтинги для всех
+        if p['played_last_game'] and not was_played:
+            p['stats']['games_played'] += 1  # Увеличиваем счётчик игр только для новых участников
     
     save_players(players_data)
     
@@ -857,7 +861,7 @@ async def publish_voting_results(sorted_players: List[Dict], averages: Dict) -> 
 
 async def check_voting_complete():
     players_data = load_players()
-    participants = [p for p in players_data['players'] if p['played_last_game']]
+    participants = [p for p in players_data['players'] if p['id'] in voting_state.participants]
     if not participants:
         return
     sorted_players, averages, awards_notifications = await calculate_voting_results(players_data)
@@ -874,6 +878,10 @@ async def check_voting_complete():
         await bot.send_message(winner_id, award_text)
     await bot.send_message(ADMIN_ID, "✅ Основное голосование завершено! Запустите 'Прорыв вечера' вручную.", reply_markup=build_voting_menu())
     voting_state.active = False
+    # Сбрасываем played_last_game после завершения голосования
+    for p in players_data['players']:
+        p['played_last_game'] = False
+    save_players(players_data)
     voting_state.voting_messages.clear()
 
 @dp.callback_query(lambda c: c.data == 'start_breakthrough')
