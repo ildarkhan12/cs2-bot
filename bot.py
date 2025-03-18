@@ -253,21 +253,27 @@ async def send_welcome(message: types.Message):
     await message.reply(welcome_text, reply_markup=keyboard)
     logger.info("Отправлено приветственное сообщение пользователю %s", message.from_user.id)
 
-@dp.callback_query(lambda c: c.data == 'start')
-async def start_callback(callback_query: types.CallbackQuery):
-    welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
-    keyboard = build_main_menu(callback_query.from_user.id)
-    try:
-        await bot.edit_message_text(
-            chat_id=callback_query.from_user.id,
-            message_id=callback_query.message.message_id,
-            text=welcome_text,
-            reply_markup=keyboard,
-            parse_mode="Markdown"
-        )
-    except Exception:
-        await bot.send_message(callback_query.from_user.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
-    await bot.answer_callback_query(callback_query.id)
+@dp.message(Command(commands=['start']))
+async def send_welcome(message: types.Message):
+    if message.chat.type != "private":
+        group_greeting = "Салам, боец!\nЯ бот вашей CS2-тусовки.\nℹ️ Пошли в ЛС для управления:"
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="Перейти в ЛС", url=f"t.me/{BOT_USERNAME}")]
+        ])
+        await message.reply(group_greeting, reply_markup=keyboard)
+        return
+    user_id = message.from_user.id
+    args = message.text.split()
+    if len(args) > 1 and args[1] == "voting" and voting_state.active and user_id in voting_state.participants:
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
+        ])
+        await message.reply("🏆 Голосование за рейтинг активно! Нажми, чтобы начать:", reply_markup=keyboard)
+    else:
+        welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
+        keyboard = build_main_menu(message.from_user.id)
+        await message.reply(welcome_text, reply_markup=keyboard)
+    logger.info("Отправлено приветственное сообщение пользователю %s", user_id)
 
 @dp.callback_query(lambda c: c.data == 'help')
 async def help_handler(callback_query: types.CallbackQuery):
@@ -582,22 +588,35 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     voting_state.participants = [p['id'] for p in participants]
     voting_state.voted_users.clear()
     voting_state.voting_messages.clear()
-    inline_keyboard = [[types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}")]]
+    inline_keyboard = [[types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}?start=voting")]]
     message = await bot.send_message(GROUP_ID, "🏆 Голосование за рейтинг началось! Участники, перейдите в ЛС для голосования:",
                                     reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard))
     voting_state.voting_message_id = message.message_id
     await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
-    logger.info(f"Запускаем голосование для участников: {voting_state.participants}")
-    for participant_id in voting_state.participants:
-        try:
-            await send_voting_messages(participant_id)
-            logger.info(f"Сообщения отправлены участнику: {participant_id}")
-        except Exception as e:
-            logger.error(f"Ошибка отправки сообщений участнику {participant_id}: {e}")
-    await bot.send_message(callback_query.from_user.id, "✅ Голосование за рейтинг запущено!")
+    logger.info(f"Голосование запущено для участников: {voting_state.participants}")
+    await bot.send_message(callback_query.from_user.id, "✅ Голосование за рейтинг запущено! Участники начнут голосование в ЛС.")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
     save_voting_state(voting_state)
+
+@dp.callback_query(lambda c: c.data == 'start_voting_user')
+async def start_voting_user(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    if not voting_state.active:
+        await bot.send_message(user_id, "❌ Голосование за рейтинг не активно!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    if user_id not in voting_state.participants:
+        await bot.send_message(user_id, "❌ Вы не участвуете в текущем голосовании!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    if user_id in voting_state.voted_users:
+        await bot.send_message(user_id, "❌ Вы уже завершили голосование!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    await send_voting_messages(user_id)
+    await bot.send_message(user_id, "🏆 Голосование начато! Оцени всех участников.")
+    await bot.answer_callback_query(callback_query.id)
 
 async def send_voting_messages(user_id: int):
     players_data = load_players()
@@ -904,7 +923,11 @@ async def start_breakthrough(callback_query: types.CallbackQuery):
     voting_state.breakthrough_message_id = message.message_id
     await bot.pin_chat_message(GROUP_ID, voting_state.breakthrough_message_id, disable_notification=True)
     for participant_id in voting_state.participants:
-        await send_breakthrough_voting_message(participant_id, sorted_players)
+        try:
+            await send_breakthrough_voting_message(participant_id, sorted_players)
+            logger.info(f"Сообщения для 'Прорыва вечера' отправлены участнику: {participant_id}")
+        except Exception as e:
+            logger.error(f"Ошибка отправки сообщений участнику {participant_id} для 'Прорыва вечера': {e}")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.send_message(callback_query.from_user.id, "✅ Голосование за 'Прорыв вечера' запущено!")
     await bot.answer_callback_query(callback_query.id)
