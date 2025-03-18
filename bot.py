@@ -424,7 +424,7 @@ async def add_player(message: types.Message):
             "id": player_id,
             "name": player_name,
             "ratings": [],
-            "played_last_game": False,
+            "played_last_game": False,  # Оставляем для статистики, но не для голосования
             "awards": {"mvp": 0, "place1": 0, "place2": 0, "place3": 0, "breakthrough": 0},
             "stats": {"mvp_count": 0, "games_played": 0, "rank_points": 0, "rank": "Рядовой"}
         })
@@ -578,12 +578,11 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
         await bot.send_message(callback_query.from_user.id, "❌ Недостаточно участников для голосования (минимум 2)!")
         await bot.answer_callback_query(callback_query.id)
         return
-    for p in players_data['players']:
-        was_played = p['played_last_game']
-        p['played_last_game'] = p['id'] in [player['id'] for player in participants]
+    
+    # Сбрасываем рейтинги для всех участников текущего голосования
+    for p in participants:
         p['ratings'] = []
-        if p['played_last_game'] and not was_played:
-            p['stats']['games_played'] += 1
+    
     save_players(players_data)
     
     voting_state.active = True
@@ -599,15 +598,22 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     voting_state.voting_timer_message_id = timer_message.message_id
     voting_state.auto_finish_task = asyncio.create_task(auto_finish_voting())
     asyncio.create_task(update_timer(GROUP_ID, voting_state.voting_timer_message_id, AUTO_FINISH_DELAY, "основное"))
+    
+    logger.info(f"Запускаем голосование для участников: {voting_state.participants}")
     for participant in participants:
-        await send_voting_messages(participant['id'])
+        try:
+            await send_voting_messages(participant['id'])
+            logger.info(f"Сообщения отправлены участнику: {participant['id']}")
+        except Exception as e:
+            logger.error(f"Ошибка отправки сообщений участнику {participant['id']}: {e}")
+    
     await bot.send_message(callback_query.from_user.id, "✅ Голосование запущено!")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
 
 async def send_voting_messages(user_id: int):
     players_data = load_players()
-    participants = [p for p in players_data['players'] if p['played_last_game'] and p['id'] != user_id]
+    participants = [p for p in players_data['players'] if p['id'] in voting_state.participants and p['id'] != user_id]
     voting_state.voting_messages[user_id] = []
     for player in participants:
         inline_keyboard = [
@@ -805,7 +811,7 @@ async def voting_results(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
 
 async def calculate_voting_results(players_data: Dict) -> tuple:
-    participants = [p for p in players_data['players'] if p['played_last_game']]
+    participants = [p for p in players_data['players'] if p['id'] in voting_state.participants]
     sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
     points_map = {1: 25, 2: 20, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 3, 10: 2}
     averages = {p['id']: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0 for p in sorted_players}
