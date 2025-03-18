@@ -900,6 +900,14 @@ async def check_voting_complete():
     voting_state.voting_messages.clear()
     await bot.send_message(ADMIN_ID, "✅ Голосование за рейтинг завершено! Запустите 'Прорыв вечера' вручную.", reply_markup=build_voting_menu())
 
+@dp.callback_query(lambda c: c.data == 'voting_finished')
+async def voting_finished(callback_query: types.CallbackQuery):
+    if callback_query.from_user.id != ADMIN_ID:
+        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
+        return
+    await bot.answer_callback_query(callback_query.id, "Голосование за рейтинг завершено. Запустите 'Прорыв вечера' или дождитесь его завершения.")
+        
+
 @dp.callback_query(lambda c: c.data == 'start_breakthrough')
 async def start_breakthrough(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
@@ -1085,14 +1093,6 @@ async def check_breakthrough_voting_complete():
             update_rank(winner)
             await bot.send_message(winner['id'], "🚀 Вы получили награду 'Прорыв вечера' (+10 очков)!")
 
-
-@dp.callback_query(lambda c: c.data == 'voting_finished')
-async def voting_finished(callback_query: types.CallbackQuery):
-    if callback_query.from_user.id != ADMIN_ID:
-        await bot.answer_callback_query(callback_query.id, "❌ У тебя нет доступа!")
-        return
-    await bot.answer_callback_query(callback_query.id, "Голосование за рейтинг завершено. Запустите 'Прорыв вечера' или дождитесь его завершения.")
-        
         # Красивое оформление результатов
         result = "🚀 *Итоги голосования за 'Прорыв вечера'* 🚀\n\n"
         result += f"🏆 *Прорыв вечера:* {winner_names}\n"
