@@ -49,6 +49,7 @@ class VotingState:
         self.auto_finish_task: Optional[asyncio.Task] = None
         self.voting_start_time: float = 0
         self.breakthrough_start_time: float = 0
+        self.voting_messages: Dict[int, List[int]] = {}  # Сообщения для голосования каждого пользователя
 
 voting_state = VotingState()
 
@@ -117,8 +118,6 @@ def update_rank(player: Dict) -> None:
 async def auto_finish_voting():
     await asyncio.sleep(AUTO_FINISH_DELAY)
     if voting_state.active:
-        for participant_id in voting_state.participants:
-            await bot.send_message(participant_id, "⏰ Голосование завершено автоматически через 24 часа.")
         await check_voting_complete()
     elif voting_state.breakthrough_active:
         await check_breakthrough_voting_complete()
@@ -518,7 +517,7 @@ async def exclude_player(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id, f"Игрок с ID {player_id} исключён из участников.")
     else:
         voting_state.excluded_players.remove(player_id)
-        await bot.answer_callback_query(callback_query.id, f"Игрок с ID {player_id} возвращён в участники.")
+        await bot.answer_callback_query(callback_query.id, f"Игрок с ID {player_id} возвращён в участников.")
 
 @dp.callback_query(lambda c: c.data == 'confirm_voting_start')
 async def confirm_voting_start(callback_query: types.CallbackQuery):
@@ -534,7 +533,7 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     for p in players_data['players']:
         was_played = p['played_last_game']
         p['played_last_game'] = p['id'] in [player['id'] for player in participants]
-        p['ratings'] = []  # Сбрасываем рейтинги для нового голосования
+        p['ratings'] = []
         if p['played_last_game'] and not was_played:
             p['stats']['games_played'] += 1
     save_players(players_data)
@@ -553,74 +552,38 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     voting_state.auto_finish_task = asyncio.create_task(auto_finish_voting())
     asyncio.create_task(update_timer(GROUP_ID, voting_state.voting_timer_message_id, AUTO_FINISH_DELAY, "основное"))
     for participant in participants:
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Начать голосование за рейтинг", callback_data="start_rating_voting")]
-        ])
-        await bot.send_message(participant['id'], "🏆 Началось голосование за рейтинг! Оцени своих тиммейтов:", reply_markup=keyboard)
+        await send_voting_messages(participant['id'])
     await bot.send_message(callback_query.from_user.id, "✅ Голосование запущено!")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
 
-@dp.callback_query(lambda c: c.data == 'start_rating_voting')
-async def start_rating_voting(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    if user_id not in voting_state.participants:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
-        return
-    if user_id in voting_state.voted_users:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы уже завершили голосование!")
-        return
+async def send_voting_messages(user_id: int):
     players_data = load_players()
     participants = [p for p in players_data['players'] if p['played_last_game'] and p['id'] != user_id]
-    if not participants:
-        await bot.answer_callback_query(callback_query.id, "❌ Нет других участников для оценки!")
-        return
-    inline_keyboard = [
-        [types.InlineKeyboardButton(text=f"{p['name']}", callback_data=f"rate_{p['id']}")]
-        for p in participants
-    ]
-    inline_keyboard.append([types.InlineKeyboardButton(text="Завершить голосование", callback_data="finish_voting_user")])
-    await bot.edit_message_text(
-        chat_id=user_id,
-        message_id=callback_query.message.message_id,
-        text="🏆 Оцени каждого игрока (кроме себя):",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    )
-    await bot.answer_callback_query(callback_query.id)
-
-@dp.callback_query(lambda c: c.data.startswith('rate_'))
-async def rate_player(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    if user_id not in voting_state.participants:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
-        return
-    if user_id in voting_state.voted_users:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы уже завершили голосование!")
-        return
-    player_id = int(callback_query.data.split('_')[1])
-    players_data = load_players()
-    player = next((p for p in players_data['players'] if p['id'] == player_id), None)
-    if not player or not player['played_last_game']:
-        await bot.answer_callback_query(callback_query.id, "❌ Этот игрок не участвовал!")
-        return
-    inline_keyboard = [
-        [types.InlineKeyboardButton(text=str(i), callback_data=f"score_{player_id}_{i}") for i in range(5, 11)],
-        [types.InlineKeyboardButton(text="Меньше 5", callback_data=f"less_{player_id}"),
-         types.InlineKeyboardButton(text="Назад", callback_data="start_rating_voting")]
-    ]
-    await bot.edit_message_text(
-        chat_id=user_id,
-        message_id=callback_query.message.message_id,
-        text=f"🏆 Оцени игрока {player['name']} (от 5 до 10):",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    )
-    await bot.answer_callback_query(callback_query.id)
+    voting_state.voting_messages[user_id] = []
+    for player in participants:
+        inline_keyboard = [
+            [types.InlineKeyboardButton(text=str(i), callback_data=f"score_{player['id']}_{i}") for i in range(5, 11)],
+            [types.InlineKeyboardButton(text="Меньше 5", callback_data=f"less_{player['id']}")]
+        ]
+        message = await bot.send_message(user_id, f"🏆 Оцени игрока {player['name']} (от 5 до 10):",
+                                        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard))
+        voting_state.voting_messages[user_id].append(message.message_id)
+    finish_keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="Завершить голосование", callback_data="finish_voting_user")],
+        [types.InlineKeyboardButton(text="Промежуточные результаты", callback_data="view_intermediate_results")]
+    ])
+    finish_message = await bot.send_message(user_id, "🏆 Когда оценишь всех, заверши голосование:", reply_markup=finish_keyboard)
+    voting_state.voting_messages[user_id].append(finish_message.message_id)
 
 @dp.callback_query(lambda c: c.data.startswith('less_'))
 async def rate_less(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     if user_id not in voting_state.participants:
         await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
+        return
+    if user_id in voting_state.voted_users:
+        await bot.answer_callback_query(callback_query.id, "❌ Вы уже завершили голосование!")
         return
     player_id = int(callback_query.data.split('_')[1])
     players_data = load_players()
@@ -630,12 +593,39 @@ async def rate_less(callback_query: types.CallbackQuery):
         return
     inline_keyboard = [
         [types.InlineKeyboardButton(text=str(i), callback_data=f"score_{player_id}_{i}") for i in range(1, 5)],
-        [types.InlineKeyboardButton(text="Назад", callback_data=f"rate_{player_id}")]
+        [types.InlineKeyboardButton(text="Назад", callback_data=f"rate_back_{player_id}")]
     ]
     await bot.edit_message_text(
         chat_id=user_id,
         message_id=callback_query.message.message_id,
         text=f"🏆 Оцени игрока {player['name']} (от 1 до 4):",
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    )
+    await bot.answer_callback_query(callback_query.id)
+
+@dp.callback_query(lambda c: c.data.startswith('rate_back_'))
+async def rate_back(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    if user_id not in voting_state.participants:
+        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
+        return
+    if user_id in voting_state.voted_users:
+        await bot.answer_callback_query(callback_query.id, "❌ Вы уже завершили голосование!")
+        return
+    player_id = int(callback_query.data.split('_')[2])
+    players_data = load_players()
+    player = next((p for p in players_data['players'] if p['id'] == player_id), None)
+    if not player or not player['played_last_game']:
+        await bot.answer_callback_query(callback_query.id, "❌ Этот игрок не участвовал!")
+        return
+    inline_keyboard = [
+        [types.InlineKeyboardButton(text=str(i), callback_data=f"score_{player_id}_{i}") for i in range(5, 11)],
+        [types.InlineKeyboardButton(text="Меньше 5", callback_data=f"less_{player_id}")]
+    ]
+    await bot.edit_message_text(
+        chat_id=user_id,
+        message_id=callback_query.message.message_id,
+        text=f"🏆 Оцени игрока {player['name']} (от 5 до 10):",
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
     )
     await bot.answer_callback_query(callback_query.id)
@@ -657,17 +647,31 @@ async def submit_score(callback_query: types.CallbackQuery):
     if not player or not player['played_last_game']:
         await bot.answer_callback_query(callback_query.id, "❌ Этот игрок не участвовал!")
         return
-    # Удаляем старую оценку, если была
     player['ratings'] = [r for r in player['ratings'] if r['from'] != user_id]
     player['ratings'].append({'from': user_id, 'score': score})
     save_players(players_data)
-    inline_keyboard = [[types.InlineKeyboardButton(text="Изменить оценку", callback_data=f"rate_{player_id}")]]
     await bot.edit_message_text(
         chat_id=user_id,
         message_id=callback_query.message.message_id,
         text=f"✅ Ты поставил оценку {score} игроку {player['name']}",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+        reply_markup=None
     )
+    await bot.answer_callback_query(callback_query.id)
+
+@dp.callback_query(lambda c: c.data == 'view_intermediate_results')
+async def view_intermediate_results(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    if user_id not in voting_state.participants:
+        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
+        return
+    players_data = load_players()
+    participants = [p for p in players_data['players'] if p['played_last_game']]
+    response = f"*Промежуточные результаты голосования за рейтинг* (осталось {get_remaining_time('основное')}):\n\n"
+    response += f"Проголосовало: {len(voting_state.voted_users)} из {len(participants)}\n"
+    for p in participants:
+        avg = sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0
+        response += f"• {p['name']}: {avg:.1f} (голосов: {len(p['ratings'])})\n"
+    await bot.send_message(user_id, response, parse_mode="Markdown")
     await bot.answer_callback_query(callback_query.id)
 
 @dp.callback_query(lambda c: c.data == 'finish_voting_user')
@@ -692,6 +696,8 @@ async def finish_voting_user(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id)
         return
     voting_state.voted_users.append(user_id)
+    for msg_id in voting_state.voting_messages.get(user_id, []):
+        await bot.edit_message_reply_markup(chat_id=user_id, message_id=msg_id, reply_markup=None)
     await bot.edit_message_text(
         chat_id=user_id,
         message_id=callback_query.message.message_id,
@@ -723,7 +729,11 @@ async def stop_voting(callback_query: types.CallbackQuery):
         await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.voting_timer_message_id)
         voting_state.voting_timer_message_id = None
     for participant_id in voting_state.participants:
-        await bot.send_message(participant_id, "🏆 Голосование было остановлено администратором!")
+        if participant_id not in voting_state.voted_users:
+            for msg_id in voting_state.voting_messages.get(participant_id, []):
+                await bot.edit_message_reply_markup(chat_id=participant_id, message_id=msg_id, reply_markup=None)
+            await bot.send_message(participant_id, "🏆 Голосование было остановлено администратором!")
+    await check_voting_complete()  # Подводим итоги с учётом уже проголосовавших
     await bot.send_message(callback_query.from_user.id, "✅ Голосование остановлено!")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
@@ -748,7 +758,7 @@ async def voting_results(callback_query: types.CallbackQuery):
 
 async def calculate_voting_results(players_data: Dict) -> tuple:
     participants = [p for p in players_data['players'] if p['played_last_game']]
-    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])), reverse=True)
+    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
     points_map = {1: 25, 2: 20, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 3, 10: 2}
     averages = {p['id']: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0 for p in sorted_players}
     awards_notifications = []
@@ -802,16 +812,15 @@ async def check_voting_complete():
     if voting_state.voting_timer_message_id:
         await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.voting_timer_message_id)
         voting_state.voting_timer_message_id = None
+    await bot.send_message(GROUP_ID, "🏆 Голосование за рейтинг завершено! Итоги:")
     new_message_id = await publish_voting_results(sorted_players, averages)
     for participant_id in voting_state.participants:
         await bot.send_message(participant_id, "🏆 Голосование завершено! Проверьте результаты в группе!")
     for winner_id, award_text in awards_notifications:
         await bot.send_message(winner_id, award_text)
-    await bot.send_message(ADMIN_ID, "✅ Основное голосование завершено! Запускаем 'Прорыв вечера'.", reply_markup=build_voting_menu())
+    await bot.send_message(ADMIN_ID, "✅ Основное голосование завершено! Запустите 'Прорыв вечера' вручную.", reply_markup=build_voting_menu())
     voting_state.active = False
-    voting_state.voted_users.clear()
-    voting_state.breakthrough_active = True
-    await start_breakthrough_voting(sorted_players)
+    voting_state.voting_messages.clear()
 
 @dp.callback_query(lambda c: c.data == 'start_breakthrough')
 async def start_breakthrough(callback_query: types.CallbackQuery):
@@ -822,22 +831,16 @@ async def start_breakthrough(callback_query: types.CallbackQuery):
         await bot.answer_callback_query(callback_query.id, "❌ Голосование за 'Прорыв вечера' уже активно!")
         return
     players_data = load_players()
-    sorted_players = [p for p in players_data['players'] if p['played_last_game']]  # Заглушка, если вызвано вручную
-    await start_breakthrough_voting(sorted_players)
-    await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
-    await bot.send_message(callback_query.from_user.id, "✅ Голосование за 'Прорыв вечера' запущено!")
-    await bot.answer_callback_query(callback_query.id)
-
-async def start_breakthrough_voting(sorted_players: List[Dict]):
-    players_data = load_players()
-    eligible_players = [p for p in sorted_players[4:] if p['played_last_game']]  # Игроки ниже 4 места
+    participants = [p for p in players_data['players'] if p['played_last_game']]
+    if not participants:
+        await bot.send_message(callback_query.from_user.id, "❌ Нет участников для 'Прорыва вечера'!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
+    eligible_players = sorted_players[4:]
     if not eligible_players:
-        await bot.send_message(GROUP_ID, "🚀 Нет кандидатов на 'Прорыв вечера'.")
-        voting_state.breakthrough_active = False
-        for p in players_data['players']:
-            p['played_last_game'] = False
-            p['ratings'] = []  # Очищаем рейтинги после полного цикла
-        save_players(players_data)
+        await bot.send_message(callback_query.from_user.id, "❌ Нет кандидатов на 'Прорыв вечера' (все в топ-4)!")
+        await bot.answer_callback_query(callback_query.id)
         return
     voting_state.breakthrough_active = True
     voting_state.breakthrough_voted_users.clear()
@@ -851,38 +854,21 @@ async def start_breakthrough_voting(sorted_players: List[Dict]):
     voting_state.breakthrough_timer_message_id = timer_message.message_id
     asyncio.create_task(update_timer(GROUP_ID, voting_state.breakthrough_timer_message_id, AUTO_FINISH_DELAY, "Прорыв вечера"))
     for participant in voting_state.participants:
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Выбрать 'Прорыв вечера'", callback_data="start_breakthrough_voting")]
-        ])
-        await bot.send_message(participant, "🚀 Началось голосование за 'Прорыв вечера'! Выберите одного игрока:", reply_markup=keyboard)
+        await send_breakthrough_voting_message(participant, sorted_players)
+    await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
+    await bot.send_message(callback_query.from_user.id, "✅ Голосование за 'Прорыв вечера' запущено!")
+    await bot.answer_callback_query(callback_query.id)
 
-@dp.callback_query(lambda c: c.data == 'start_breakthrough_voting')
-async def start_breakthrough_voting_user(callback_query: types.CallbackQuery):
-    user_id = callback_query.from_user.id
-    if user_id not in voting_state.participants:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
-        return
-    if user_id in voting_state.breakthrough_voted_users:
-        await bot.answer_callback_query(callback_query.id, "❌ Вы уже проголосовали за 'Прорыв вечера'!")
-        return
-    players_data = load_players()
-    sorted_players = sorted([p for p in players_data['players'] if p['played_last_game']],
-                            key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])), reverse=True)
-    eligible_players = [p for p in sorted_players[4:] if p['played_last_game']]
-    if not eligible_players:
-        await bot.answer_callback_query(callback_query.id, "❌ Нет кандидатов для 'Прорыва вечера'!")
-        return
+async def send_breakthrough_voting_message(user_id: int, sorted_players: List[Dict]):
+    eligible_players = sorted_players[4:]
     inline_keyboard = [
         [types.InlineKeyboardButton(text=p['name'], callback_data=f"breakthrough_vote_{p['id']}")]
         for p in eligible_players
     ]
-    await bot.edit_message_text(
-        chat_id=user_id,
-        message_id=callback_query.message.message_id,
-        text="🚀 Выберите одного игрока для 'Прорыва вечера':",
-        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    )
-    await bot.answer_callback_query(callback_query.id)
+    inline_keyboard.append([types.InlineKeyboardButton(text="Промежуточные результаты", callback_data="view_breakthrough_results")])
+    message = await bot.send_message(user_id, "🚀 Выберите одного игрока для 'Прорыва вечера':",
+                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard))
+    voting_state.voting_messages[user_id] = [message.message_id]
 
 @dp.callback_query(lambda c: c.data.startswith('breakthrough_vote_'))
 async def breakthrough_vote(callback_query: types.CallbackQuery):
@@ -912,6 +898,25 @@ async def breakthrough_vote(callback_query: types.CallbackQuery):
     if len(voting_state.breakthrough_voted_users) >= len(voting_state.participants) and voting_state.breakthrough_active:
         await check_breakthrough_voting_complete()
 
+@dp.callback_query(lambda c: c.data == 'view_breakthrough_results')
+async def view_breakthrough_results(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    if user_id not in voting_state.participants:
+        await bot.answer_callback_query(callback_query.id, "❌ Вы не участвовали в последней игре!")
+        return
+    players_data = load_players()
+    participants = [p for p in players_data['players'] if p['played_last_game']]
+    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
+    eligible_players = sorted_players[4:]
+    response = f"*Промежуточные результаты 'Прорыв вечера'* (осталось {get_remaining_time('Прорыв вечера')}):\n\n"
+    response += f"Проголосовало: {len(voting_state.breakthrough_voted_users)} из {len(participants)}\n"
+    for player in eligible_players:
+        votes = len(player.get('breakthrough_ratings', []))
+        if votes > 0:
+            response += f"• {player['name']}: {votes} голос(ов)\n"
+    await bot.send_message(user_id, response, parse_mode="Markdown")
+    await bot.answer_callback_query(callback_query.id)
+
 @dp.callback_query(lambda c: c.data == 'stop_breakthrough')
 async def stop_breakthrough(callback_query: types.CallbackQuery):
     if callback_query.from_user.id != ADMIN_ID:
@@ -934,7 +939,10 @@ async def stop_breakthrough(callback_query: types.CallbackQuery):
         await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
         voting_state.breakthrough_timer_message_id = None
     for participant_id in voting_state.participants:
-        await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' было остановлено администратором!")
+        if participant_id not in voting_state.breakthrough_voted_users:
+            for msg_id in voting_state.voting_messages.get(participant_id, []):
+                await bot.edit_message_reply_markup(chat_id=participant_id, message_id=msg_id, reply_markup=None)
+            await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' было остановлено администратором!")
     await bot.send_message(callback_query.from_user.id, "✅ Голосование за 'Прорыв вечера' остановлено!")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
@@ -949,8 +957,8 @@ async def breakthrough_results(callback_query: types.CallbackQuery):
         return
     players_data = load_players()
     participants = [p for p in players_data['players'] if p['played_last_game']]
-    eligible_players = [p for p in participants if p['ratings'] and sum(r['score'] for r in p['ratings']) / len(p['ratings']) < sorted(
-        [sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) for p in participants if p['ratings']], reverse=True)[3]]
+    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
+    eligible_players = sorted_players[4:]
     response = f"*Промежуточные результаты 'Прорыв вечера'* (осталось {get_remaining_time('Прорыв вечера')}):\n\n"
     response += f"Проголосовало: {len(voting_state.breakthrough_voted_users)} из {len(participants)}\n"
     for player in eligible_players:
@@ -963,8 +971,8 @@ async def breakthrough_results(callback_query: types.CallbackQuery):
 async def check_breakthrough_voting_complete():
     players_data = load_players()
     participants = [p for p in players_data['players'] if p['played_last_game']]
-    eligible_players = [p for p in participants if p['ratings'] and sum(r['score'] for r in p['ratings']) / len(p['ratings']) < sorted(
-        [sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) for p in participants if p['ratings']], reverse=True)[3]]
+    sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
+    eligible_players = sorted_players[4:]
     if not eligible_players:
         voting_state.breakthrough_active = False
         message = await bot.send_message(GROUP_ID, "🚀 Голосование за 'Прорыв вечера' завершено!\n\nНет кандидатов.")
@@ -980,12 +988,11 @@ async def check_breakthrough_voting_complete():
             p.pop('breakthrough_ratings', None)
         save_players(players_data)
         return True
-    if len(voting_state.breakthrough_voted_users) < len(participants):
-        return False
     sorted_eligible = sorted(eligible_players, key=lambda p: len(p.get('breakthrough_ratings', [])), reverse=True)
     max_votes = len(sorted_eligible[0].get('breakthrough_ratings', [])) if sorted_eligible else 0
     winners = [p for p in sorted_eligible if len(p.get('breakthrough_ratings', [])) == max_votes]
-    if winners:
+    if winners and (len(voting_state.breakthrough_voted_users) >= len(participants) or not voting_state.breakthrough_active):
+        voting_state.breakthrough_active = False
         winner_names = ", ".join(p['name'] for p in winners)
         for winner in winners:
             winner['awards']['breakthrough'] += 1
@@ -995,22 +1002,21 @@ async def check_breakthrough_voting_complete():
         result = f"🚀 *Голосование за 'Прорыв вечера' завершено!*\n\n*Прорыв вечера:* {winner_names}!"
         message = await bot.send_message(GROUP_ID, result, parse_mode="Markdown")
         await bot.pin_chat_message(chat_id=GROUP_ID, message_id=message.message_id, disable_notification=True)
-    for p in players_data['players']:
-        p['played_last_game'] = False
-        p['ratings'] = []
-        p.pop('breakthrough_ratings', None)
-    save_players(players_data)
-    if voting_state.breakthrough_message_id:
-        await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_message_id)
-    if voting_state.breakthrough_timer_message_id:
-        await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
-        voting_state.breakthrough_timer_message_id = None
-    for participant_id in voting_state.participants:
-        await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' завершено! Проверьте результаты в группе!")
-    await bot.send_message(ADMIN_ID, "✅ Голосование за 'Прорыв вечера' завершено!", reply_markup=build_voting_menu())
-    voting_state.breakthrough_active = False
-    voting_state.breakthrough_voted_users.clear()
-    return True
+        if voting_state.breakthrough_message_id:
+            await bot.unpin_chat_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_message_id)
+        if voting_state.breakthrough_timer_message_id:
+            await bot.delete_message(chat_id=GROUP_ID, message_id=voting_state.breakthrough_timer_message_id)
+            voting_state.breakthrough_timer_message_id = None
+        for participant_id in voting_state.participants:
+            await bot.send_message(participant_id, "🚀 Голосование за 'Прорыв вечера' завершено! Проверьте результаты в группе!")
+        await bot.send_message(ADMIN_ID, "✅ Голосование за 'Прорыв вечера' завершено!", reply_markup=build_voting_menu())
+        for p in players_data['players']:
+            p['played_last_game'] = False
+            p['ratings'] = []
+            p.pop('breakthrough_ratings', None)
+        save_players(players_data)
+        voting_state.voting_messages.clear()
+        voting_state.breakthrough_voted_users.clear()
 
 @dp.callback_query()
 async def default_callback_handler(callback_query: types.CallbackQuery):
