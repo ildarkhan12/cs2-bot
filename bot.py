@@ -1096,7 +1096,7 @@ async def main():
     
     runner = web.AppRunner(app)
     await runner.setup()
-    port = int(os.getenv('PORT', 8080))
+    port = int(os.getenv('PORT', 10000))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     logger.info("Сервер запущен на порту %s", port)
