@@ -30,7 +30,7 @@ REPO_URL = f"https://{GIT_USERNAME}:{GIT_TOKEN}@github.com/ildarkhan12/cs2-bot.g
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# Кэш данных игроков
+# Кэш данных игроков (инициализируем как None)
 players_data_cache: Dict[str, List[Dict]] = None
 
 # Класс для управления состоянием голосования
@@ -57,12 +57,12 @@ voting_state = VotingState()
 
 def load_players() -> Dict[str, List[Dict]]:
     global players_data_cache
-    if players_data_cache is not None:
-        return players_data_cache
+    # Всегда читаем из файла, чтобы не зависеть от кэша при рестарте
     try:
         with open('players.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
             players_data_cache = data
+            logger.info("players.json успешно загружен из файла")
             return data
     except FileNotFoundError:
         logger.warning("Файл players.json не найден, инициализируется с пустым списком")
@@ -82,6 +82,7 @@ def save_players(data: Dict[str, List[Dict]]) -> None:
         with open('players.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         players_data_cache = data
+        logger.info("players.json успешно сохранён локально")
         asyncio.create_task(save_players_to_git())
     except Exception as e:
         logger.exception("Ошибка сохранения players.json: %s", e)
@@ -91,14 +92,23 @@ async def save_players_to_git() -> None:
         if not GIT_TOKEN or not GIT_USERNAME:
             logger.error("GIT_TOKEN или GIT_USERNAME не установлены, пропускаем git push")
             return
+        # Проверяем, существует ли репозиторий локально
+        if not os.path.exists('.git'):
+            logger.info("Инициализируем новый git-репозиторий")
+            subprocess.run(["git", "init"], check=True)
+            subprocess.run(["git", "remote", "add", "origin", REPO_URL], check=True)
         subprocess.run(["git", "config", "--global", "user.name", GIT_USERNAME], check=True)
         subprocess.run(["git", "config", "--global", "user.email", f"{GIT_USERNAME}@users.noreply.github.com"], check=True)
         subprocess.run(["git", "add", "players.json"], check=True)
-        subprocess.run(["git", "commit", "-m", "Update players.json"], check=True)
-        subprocess.run(["git", "push", REPO_URL, "main"], check=True)
-        logger.info("players.json успешно сохранён в Git-репозиторий")
+        result = subprocess.run(["git", "commit", "-m", "Update players.json"], check=False, capture_output=True, text=True)
+        if result.returncode == 0 or "nothing to commit" not in result.stdout:
+            subprocess.run(["git", "pull", "--rebase", "origin", "main"], check=True)  # Синхронизация с удалённым репозиторием
+            subprocess.run(["git", "push", "origin", "main"], check=True)
+            logger.info("players.json успешно сохранён в Git-репозиторий")
+        else:
+            logger.info("Нет изменений для коммита в players.json")
     except subprocess.CalledProcessError as e:
-        logger.error("Ошибка при выполнении git-команды: %s", e)
+        logger.error("Ошибка при выполнении git-команды: %s\nВывод: %s\nОшибка: %s", e, e.stdout, e.stderr)
     except Exception as e:
         logger.exception("Неизвестная ошибка при сохранении в git: %s", e)
 
@@ -733,7 +743,7 @@ async def stop_voting(callback_query: types.CallbackQuery):
             for msg_id in voting_state.voting_messages.get(participant_id, []):
                 await bot.edit_message_reply_markup(chat_id=participant_id, message_id=msg_id, reply_markup=None)
             await bot.send_message(participant_id, "🏆 Голосование было остановлено администратором!")
-    await check_voting_complete()  # Подводим итоги с учётом уже проголосовавших
+    await check_voting_complete()
     await bot.send_message(callback_query.from_user.id, "✅ Голосование остановлено!")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
@@ -1028,10 +1038,27 @@ async def health_check(request):
     return web.Response(text="OK", status=200)
 
 async def on_startup(dispatcher):
+    # При старте проверяем наличие players.json в репозитории
+    if not os.path.exists('players.json'):
+        logger.info("players.json отсутствует, пытаемся загрузить из репозитория")
+        try:
+            subprocess.run(["git", "pull", "origin", "main"], check=True)
+            if os.path.exists('players.json'):
+                logger.info("players.json успешно загружен из репозитория")
+            else:
+                logger.info("players.json не найден в репозитории, создаём новый")
+                save_players({"players": []})
+        except subprocess.CalledProcessError as e:
+            logger.error("Ошибка при загрузке из git: %s", e)
+            save_players({"players": []})  # Создаём пустой файл, если не удалось загрузить
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
 async def on_shutdown(dispatcher):
+    # Перед завершением сохраняем данные
+    logger.info("Сохранение players.json перед завершением")
+    if players_data_cache is not None:
+        save_players(players_data_cache)
     await bot.delete_webhook()
     logger.info("Бот остановлен")
 
