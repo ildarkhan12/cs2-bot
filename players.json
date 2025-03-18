@@ -70,7 +70,12 @@
         {
             "id": 480892405,
             "name": "Fakha",
-            "ratings": [],
+            "ratings": [
+                {
+                    "from": 113405030,
+                    "score": 8
+                }
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
