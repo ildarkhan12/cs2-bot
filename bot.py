@@ -248,30 +248,35 @@ async def send_welcome(message: types.Message):
         ])
         await message.reply(group_greeting, reply_markup=keyboard)
         return
-    welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
-    keyboard = build_main_menu(message.from_user.id)
-    await message.reply(welcome_text, reply_markup=keyboard)
-    logger.info("Отправлено приветственное сообщение пользователю %s", message.from_user.id)
-
-@dp.message(Command(commands=['start']))
-async def send_welcome(message: types.Message):
-    if message.chat.type != "private":
-        group_greeting = "Салам, боец!\nЯ бот вашей CS2-тусовки.\nℹ️ Пошли в ЛС для управления:"
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Перейти в ЛС", url=f"t.me/{BOT_USERNAME}")]
-        ])
-        await message.reply(group_greeting, reply_markup=keyboard)
-        return
     user_id = message.from_user.id
     args = message.text.split()
-    if len(args) > 1 and args[1] == "voting" and voting_state.active and user_id in voting_state.participants:
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
-        ])
-        await message.reply("🏆 Голосование за рейтинг активно! Нажми, чтобы начать:", reply_markup=keyboard)
+    if len(args) > 1 and args[1] == "voting" and voting_state.active:
+        if user_id in voting_state.participants:
+            if user_id in voting_state.voted_users:
+                await message.reply("🏆 Вы уже завершили голосование за рейтинг!")
+            else:
+                keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+                    [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
+                ])
+                await message.reply("🏆 Голосование за рейтинг активно! Нажми, чтобы начать:", reply_markup=keyboard)
+        else:
+            await message.reply("❌ Вы не участвуете в текущем голосовании!")
     else:
         welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
-        keyboard = build_main_menu(message.from_user.id)
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="Список команд", callback_data="help"),
+                types.InlineKeyboardButton(text="Моя статистика", callback_data="my_stats")
+            ]
+        ])
+        if user_id == ADMIN_ID:
+            keyboard.inline_keyboard.extend([
+                [
+                    types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
+                    types.InlineKeyboardButton(text="Голосование", callback_data="start_voting_menu")
+                ],
+                [types.InlineKeyboardButton(text="Список игроков", callback_data="list_players")]
+            ])
         await message.reply(welcome_text, reply_markup=keyboard)
     logger.info("Отправлено приветственное сообщение пользователю %s", user_id)
 
@@ -595,6 +600,11 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
     logger.info(f"Голосование запущено для участников: {voting_state.participants}")
     await bot.send_message(callback_query.from_user.id, "✅ Голосование за рейтинг запущено! Участники начнут голосование в ЛС.")
+    if callback_query.from_user.id in voting_state.participants:  # Отправляем админу кнопку, если он участник
+        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
+        ])
+        await bot.send_message(callback_query.from_user.id, "🏆 Вы участвуете в голосовании! Нажмите, чтобы начать:", reply_markup=keyboard)
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
     save_voting_state(voting_state)
