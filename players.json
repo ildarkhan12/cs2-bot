@@ -94,7 +94,12 @@
         {
             "id": 771664527,
             "name": "s6les",
-            "ratings": [],
+            "ratings": [
+                {
+                    "from": 480892405,
+                    "score": 1
+                }
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
