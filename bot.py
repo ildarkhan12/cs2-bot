@@ -600,7 +600,7 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
     logger.info(f"Голосование запущено для участников: {voting_state.participants}")
     await bot.send_message(callback_query.from_user.id, "✅ Голосование за рейтинг запущено! Участники начнут голосование в ЛС.")
-    if callback_query.from_user.id in voting_state.participants:  # Отправляем админу кнопку, если он участник
+    if callback_query.from_user.id in voting_state.participants:
         keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
             [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
         ])
@@ -613,7 +613,7 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
 async def start_voting_user(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     if not voting_state.active:
-        await bot.send_message(user_id, "❌ Голосование за рейтинг не активно!")
+        await bot.send_message(user_id, "❌ Голосование за рейтинг не активно! Возможно, бот перезапустился. Обратитесь к админу.")
         await bot.answer_callback_query(callback_query.id)
         return
     if user_id not in voting_state.participants:
@@ -627,6 +627,7 @@ async def start_voting_user(callback_query: types.CallbackQuery):
     await send_voting_messages(user_id)
     await bot.send_message(user_id, "🏆 Голосование начато! Оцени всех участников.")
     await bot.answer_callback_query(callback_query.id)
+    save_voting_state(voting_state)  # Добавляем сохранение здесь
 
 async def send_voting_messages(user_id: int):
     players_data = load_players()
@@ -795,7 +796,7 @@ async def finish_voting_user(callback_query: types.CallbackQuery):
         reply_markup=None
     )
     await bot.answer_callback_query(callback_query.id)
-    save_voting_state(voting_state)
+    save_voting_state(voting_state)  # Уже есть, но оставляем для наглядности
     if len(voting_state.voted_users) >= len(voting_state.participants) and voting_state.active:
         await check_voting_complete()
 
@@ -1121,6 +1122,12 @@ async def on_startup(dispatcher):
         logger.info("players.json отсутствует локально, загружаем из GitHub")
         await fetch_players_from_github()
     voting_state = load_voting_state()
+    if voting_state.active:
+        logger.info("Обнаружено активное голосование за рейтинг при запуске")
+        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за рейтинг было активно. Проверьте состояние и уведомите участников, если нужно.")
+    if voting_state.breakthrough_active:
+        logger.info("Обнаружено активное голосование за 'Прорыв вечера' при запуске")
+        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за 'Прорыв вечера' было активно. Проверьте состояние и уведомите участников, если нужно.")
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
