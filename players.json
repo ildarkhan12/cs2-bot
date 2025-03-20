@@ -46,7 +46,12 @@
         {
             "id": 7660194671,
             "name": "test",
-            "ratings": [],
+            "ratings": [
+                {
+                    "from": 113405030,
+                    "score": 7
+                }
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
