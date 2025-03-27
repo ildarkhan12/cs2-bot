@@ -147,6 +147,25 @@
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
+        },
+        {
+            "id": 1944823446,
+            "name": "Bulatagai",
+            "ratings": [],
+            "played_last_game": false,
+            "awards": {
+                "mvp": 0,
+                "place1": 0,
+                "place2": 0,
+                "place3": 0,
+                "breakthrough": 0
+            },
+            "stats": {
+                "mvp_count": 0,
+                "games_played": 0,
+                "rank_points": 0,
+                "rank": "Рядовой"
+            }
         }
     ]
 }
