@@ -3,20 +3,7 @@
         {
             "id": 113405030,
             "name": "Admin",
-            "ratings": [
-                {
-                    "from": 480892405,
-                    "score": 10
-                },
-                {
-                    "from": 7660194671,
-                    "score": 8
-                },
-                {
-                    "from": 771664527,
-                    "score": 1
-                }
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -35,24 +22,7 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [
-                {
-                    "from": 113405030,
-                    "score": 9
-                },
-                {
-                    "from": 480892405,
-                    "score": 5
-                },
-                {
-                    "from": 7660194671,
-                    "score": 8
-                },
-                {
-                    "from": 771664527,
-                    "score": 2
-                }
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -71,20 +41,7 @@
         {
             "id": 7660194671,
             "name": "test",
-            "ratings": [
-                {
-                    "from": 113405030,
-                    "score": 8
-                },
-                {
-                    "from": 480892405,
-                    "score": 10
-                },
-                {
-                    "from": 771664527,
-                    "score": 3
-                }
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -103,20 +60,7 @@
         {
             "id": 480892405,
             "name": "Fakha",
-            "ratings": [
-                {
-                    "from": 113405030,
-                    "score": 7
-                },
-                {
-                    "from": 7660194671,
-                    "score": 9
-                },
-                {
-                    "from": 771664527,
-                    "score": 10
-                }
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -135,20 +79,7 @@
         {
             "id": 771664527,
             "name": "s6les",
-            "ratings": [
-                {
-                    "from": 113405030,
-                    "score": 10
-                },
-                {
-                    "from": 480892405,
-                    "score": 5
-                },
-                {
-                    "from": 7660194671,
-                    "score": 9
-                }
-            ],
+            "ratings": [],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
@@ -168,7 +99,7 @@
             "id": 1944823446,
             "name": "Bulatagai",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -178,7 +109,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 0,
+                "games_played": 1,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
