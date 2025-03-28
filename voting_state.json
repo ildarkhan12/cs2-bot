@@ -13,17 +13,9 @@
     "voting_message_id": 349,
     "breakthrough_message_id": null,
     "voted_users": [
-        113405030
+        113405030,
+        7660194671
     ],
     "breakthrough_voted_users": [],
-    "voting_messages": {
-        "7660194671": [
-            1044,
-            1045,
-            1046,
-            1047,
-            1048,
-            1049
-        ]
-    }
+    "voting_messages": {}
 }
