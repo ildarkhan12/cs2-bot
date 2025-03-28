@@ -12,16 +12,9 @@
     "excluded_players": [],
     "voting_message_id": 349,
     "breakthrough_message_id": null,
-    "voted_users": [],
+    "voted_users": [
+        113405030
+    ],
     "breakthrough_voted_users": [],
-    "voting_messages": {
-        "113405030": [
-            1035,
-            1036,
-            1037,
-            1038,
-            1039,
-            1040
-        ]
-    }
+    "voting_messages": {}
 }
