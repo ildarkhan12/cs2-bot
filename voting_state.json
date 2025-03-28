@@ -1,0 +1,11 @@
+{
+    "active": false,
+    "breakthrough_active": false,
+    "participants": [],
+    "excluded_players": [],
+    "voting_message_id": null,
+    "breakthrough_message_id": null,
+    "voted_users": [],
+    "breakthrough_voted_users": [],
+    "voting_messages": {}
+}
