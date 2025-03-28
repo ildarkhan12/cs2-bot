@@ -27,7 +27,12 @@
         {
             "id": 267576019,
             "name": "Lighthouse",
-            "ratings": [],
+            "ratings": [
+                {
+                    "from": 771664527,
+                    "score": 2
+                }
+            ],
             "played_last_game": true,
             "awards": {
                 "mvp": 0,
