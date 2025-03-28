@@ -25,7 +25,8 @@ BOT_USERNAME = "CS2_Team_Bot"
 GIT_USERNAME = os.getenv('GIT_USERNAME', 'ildarkhan12')
 GIT_TOKEN = os.getenv('GITHUB_TOKEN')
 REPO_NAME = 'cs2-bot'
-GITHUB_API_URL = f'https://api.github.com/repos/{GIT_USERNAME}/{REPO_NAME}/contents/players.json'
+GITHUB_API_URL_PLAYERS = f'https://api.github.com/repos/{GIT_USERNAME}/{REPO_NAME}/contents/players.json'
+GITHUB_API_URL_STATE = f'https://api.github.com/repos/{GIT_USERNAME}/{REPO_NAME}/contents/voting_state.json'
 STATE_FILE = 'voting_state.json'
 
 # Инициализация бота и диспетчера
@@ -119,7 +120,7 @@ async def fetch_players_from_github() -> Dict[str, List[Dict]]:
         'Accept': 'application/vnd.github.v3+json'
     }
     try:
-        response = requests.get(GITHUB_API_URL, headers=headers)
+        response = requests.get(GITHUB_API_URL_PLAYERS, headers=headers)
         if response.status_code == 200:
             content = response.json()['content']
             decoded_content = base64.b64decode(content).decode('utf-8')
@@ -149,7 +150,7 @@ async def save_players_to_github(data: Dict[str, List[Dict]]) -> None:
         'Accept': 'application/vnd.github.v3+json'
     }
     try:
-        response = requests.get(GITHUB_API_URL, headers=headers)
+        response = requests.get(GITHUB_API_URL_PLAYERS, headers=headers)
         sha = response.json().get('sha') if response.status_code == 200 else None
         content = base64.b64encode(json.dumps(data, ensure_ascii=False, indent=4).encode('utf-8')).decode('utf-8')
         payload = {
@@ -159,13 +160,93 @@ async def save_players_to_github(data: Dict[str, List[Dict]]) -> None:
         }
         if sha:
             payload['sha'] = sha
-        response = requests.put(GITHUB_API_URL, headers=headers, json=payload)
+        response = requests.put(GITHUB_API_URL_PLAYERS, headers=headers, json=payload)
         if response.status_code in [200, 201]:
             logger.info("players.json успешно сохранён в GitHub")
         else:
             logger.error("Ошибка сохранения players.json в GitHub: %s", response.text)
     except Exception as e:
         logger.exception("Ошибка при сохранении в GitHub: %s", e)
+
+# --- Работа с состоянием голосования ---
+
+def load_voting_state() -> VotingState:
+    try:
+        with open(STATE_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            logger.info("voting_state.json загружен из локального файла")
+            return VotingState.from_dict(data)
+    except (FileNotFoundError, json.JSONDecodeError):
+        logger.warning("Локальный voting_state.json не найден или повреждён, пытаемся загрузить из GitHub")
+        return asyncio.run(fetch_voting_state_from_github())
+
+def save_voting_state(state: VotingState) -> None:
+    try:
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(state.to_dict(), f, ensure_ascii=False, indent=4)
+        logger.info("voting_state.json успешно сохранён локально: %s", state.to_dict())
+        asyncio.create_task(save_voting_state_to_github(state))
+    except Exception as e:
+        logger.error("Ошибка сохранения voting_state.json локально: %s", e)
+
+async def fetch_voting_state_from_github() -> VotingState:
+    if not GIT_TOKEN:
+        logger.error("GITHUB_TOKEN не установлен, невозможно загрузить voting_state.json")
+        default_state = VotingState()
+        save_voting_state(default_state)
+        return default_state
+    headers = {
+        'Authorization': f'token {GIT_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    try:
+        response = requests.get(GITHUB_API_URL_STATE, headers=headers)
+        if response.status_code == 200:
+            content = response.json()['content']
+            decoded_content = base64.b64decode(content).decode('utf-8')
+            data = json.loads(decoded_content)
+            with open(STATE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logger.info("voting_state.json успешно загружен из GitHub")
+            return VotingState.from_dict(data)
+        elif response.status_code == 404:
+            logger.warning("voting_state.json не найден в репозитории, создаём новый")
+            default_state = VotingState()
+            save_voting_state(default_state)
+            return default_state
+        else:
+            logger.error("Ошибка загрузки voting_state.json из GitHub: %s", response.text)
+            return VotingState()
+    except Exception as e:
+        logger.exception("Ошибка при загрузке voting_state.json из GitHub: %s", e)
+        return VotingState()
+
+async def save_voting_state_to_github(state: VotingState) -> None:
+    if not GIT_TOKEN:
+        logger.error("GITHUB_TOKEN не установлен, пропускаем сохранение voting_state.json в GitHub")
+        return
+    headers = {
+        'Authorization': f'token {GIT_TOKEN}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    try:
+        response = requests.get(GITHUB_API_URL_STATE, headers=headers)
+        sha = response.json().get('sha') if response.status_code == 200 else None
+        content = base64.b64encode(json.dumps(state.to_dict(), ensure_ascii=False, indent=4).encode('utf-8')).decode('utf-8')
+        payload = {
+            'message': 'Update voting_state.json',
+            'content': content,
+            'branch': 'main'
+        }
+        if sha:
+            payload['sha'] = sha
+        response = requests.put(GITHUB_API_URL_STATE, headers=headers, json=payload)
+        if response.status_code in [200, 201]:
+            logger.info("voting_state.json успешно сохранён в GitHub")
+        else:
+            logger.error("Ошибка сохранения voting_state.json в GitHub: %s", response.text)
+    except Exception as e:
+        logger.exception("Ошибка при сохранении voting_state.json в GitHub: %s", e)
 
 def update_rank(player: Dict) -> None:
     points = player['stats'].get('rank_points', 0)
@@ -178,24 +259,6 @@ def update_rank(player: Dict) -> None:
             player['stats']['rank'] = rank
             break
 
-# --- Работа с состоянием голосования ---
-
-def load_voting_state() -> VotingState:
-    try:
-        with open(STATE_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return VotingState.from_dict(data)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return VotingState()
-
-def save_voting_state(state: VotingState) -> None:
-    try:
-        with open(STATE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(state.to_dict(), f, ensure_ascii=False, indent=4)
-        logger.info("voting_state.json сохранён")
-    except Exception as e:
-        logger.exception("Ошибка сохранения voting_state.json: %s", e)
-
 # --- Общие функции для меню ---
 
 def build_main_menu(user_id: int) -> types.InlineKeyboardMarkup:
@@ -205,15 +268,18 @@ def build_main_menu(user_id: int) -> types.InlineKeyboardMarkup:
             types.InlineKeyboardButton(text="Моя статистика", callback_data="my_stats")
         ]
     ]
+    players_data = load_players()
+    user_participated = any(p['id'] == user_id and p['played_last_game'] for p in players_data['players'])
+    if (voting_state.active or voting_state.breakthrough_active) and user_participated:
+        inline_keyboard.append([types.InlineKeyboardButton(text="Голосование", callback_data="user_voting_menu")])
     if user_id == ADMIN_ID:
         inline_keyboard.extend([
             [
                 types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
-                types.InlineKeyboardButton(text="Голосование", callback_data="start_voting_menu")
+                types.InlineKeyboardButton(text="Голосование (админ)", callback_data="start_voting_menu")
             ],
             [types.InlineKeyboardButton(text="Список игроков", callback_data="list_players")]
         ])
-    inline_keyboard.append([types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start")])
     return types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 def build_voting_menu() -> types.InlineKeyboardMarkup:
@@ -263,22 +329,25 @@ async def send_welcome(message: types.Message):
             await message.reply("❌ Вы не участвуете в текущем голосовании!")
     else:
         welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="Список команд", callback_data="help"),
-                types.InlineKeyboardButton(text="Моя статистика", callback_data="my_stats")
-            ]
-        ])
-        if user_id == ADMIN_ID:
-            keyboard.inline_keyboard.extend([
-                [
-                    types.InlineKeyboardButton(text="Управление игроками", callback_data="manage_players"),
-                    types.InlineKeyboardButton(text="Голосование", callback_data="start_voting_menu")
-                ],
-                [types.InlineKeyboardButton(text="Список игроков", callback_data="list_players")]
-            ])
+        keyboard = build_main_menu(user_id)
         await message.reply(welcome_text, reply_markup=keyboard)
     logger.info("Отправлено приветственное сообщение пользователю %s", user_id)
+
+@dp.callback_query(lambda c: c.data == 'start')
+async def start_callback(callback_query: types.CallbackQuery):
+    welcome_text = "Салам, боец!\nЯ бот вашей CS2-тусовки. Выбери действие:"
+    keyboard = build_main_menu(callback_query.from_user.id)
+    try:
+        await bot.edit_message_text(
+            chat_id=callback_query.from_user.id,
+            message_id=callback_query.message.message_id,
+            text=welcome_text,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
+    except Exception:
+        await bot.send_message(callback_query.from_user.id, welcome_text, reply_markup=keyboard, parse_mode="Markdown")
+    await bot.answer_callback_query(callback_query.id)
 
 @dp.callback_query(lambda c: c.data == 'help')
 async def help_handler(callback_query: types.CallbackQuery):
@@ -553,10 +622,14 @@ async def start_voting(callback_query: types.CallbackQuery):
         [types.InlineKeyboardButton(text=f"{p['name']} (ID: {p['id']})", callback_data=f"exclude_{p['id']}")]
         for p in players_data['players']
     ]
-    inline_keyboard.append([types.InlineKeyboardButton(text="Подтвердить и начать", callback_data="confirm_voting_start")])
+    inline_keyboard.extend([
+        [types.InlineKeyboardButton(text="Подтвердить и начать", callback_data="confirm_voting_start")],
+        [types.InlineKeyboardButton(text="⬅️ Назад", callback_data="start_voting_menu")]
+    ])
     await bot.send_message(callback_query.from_user.id, "Выберите игроков, которые НЕ участвовали в последней игре:",
                           reply_markup=types.InlineKeyboardMarkup(inline_keyboard=inline_keyboard))
     await bot.answer_callback_query(callback_query.id)
+    save_voting_state(voting_state)
 
 @dp.callback_query(lambda c: c.data.startswith('exclude_'))
 async def exclude_player(callback_query: types.CallbackQuery):
@@ -570,6 +643,7 @@ async def exclude_player(callback_query: types.CallbackQuery):
     else:
         voting_state.excluded_players.remove(player_id)
         await bot.answer_callback_query(callback_query.id, f"Игрок с ID {player_id} возвращён в участников.")
+    save_voting_state(voting_state)
 
 @dp.callback_query(lambda c: c.data == 'confirm_voting_start')
 async def confirm_voting_start(callback_query: types.CallbackQuery):
@@ -600,11 +674,14 @@ async def confirm_voting_start(callback_query: types.CallbackQuery):
     await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
     logger.info(f"Голосование запущено для участников: {voting_state.participants}")
     await bot.send_message(callback_query.from_user.id, "✅ Голосование за рейтинг запущено! Участники начнут голосование в ЛС.")
-    if callback_query.from_user.id in voting_state.participants:
-        keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
-        ])
-        await bot.send_message(callback_query.from_user.id, "🏆 Вы участвуете в голосовании! Нажмите, чтобы начать:", reply_markup=keyboard)
+    for participant_id in voting_state.participants:
+        try:
+            keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+                [types.InlineKeyboardButton(text="Начать голосование", callback_data="start_voting_user")]
+            ])
+            await bot.send_message(participant_id, "🏆 Голосование за рейтинг началось! Нажми, чтобы начать:", reply_markup=keyboard)
+        except Exception as e:
+            logger.warning(f"Не удалось уведомить участника {participant_id}: {e}")
     await bot.edit_message_reply_markup(callback_query.from_user.id, callback_query.message.message_id, reply_markup=build_voting_menu())
     await bot.answer_callback_query(callback_query.id)
     save_voting_state(voting_state)
@@ -627,7 +704,7 @@ async def start_voting_user(callback_query: types.CallbackQuery):
     await send_voting_messages(user_id)
     await bot.send_message(user_id, "🏆 Голосование начато! Оцени всех участников.")
     await bot.answer_callback_query(callback_query.id)
-    save_voting_state(voting_state)  # Добавляем сохранение здесь
+    save_voting_state(voting_state)
 
 async def send_voting_messages(user_id: int):
     players_data = load_players()
@@ -796,7 +873,7 @@ async def finish_voting_user(callback_query: types.CallbackQuery):
         reply_markup=None
     )
     await bot.answer_callback_query(callback_query.id)
-    save_voting_state(voting_state)  # Уже есть, но оставляем для наглядности
+    save_voting_state(voting_state)
     if len(voting_state.voted_users) >= len(voting_state.participants) and voting_state.active:
         await check_voting_complete()
 
@@ -1064,7 +1141,7 @@ async def check_breakthrough_voting_complete():
             await bot.send_message(winner['id'], "🚀 Вы получили награду 'Прорыв вечера' (+10 очков)!")
         result = "🚀 *Итоги голосования за 'Прорыв вечера'* 🚀\n\n"
         result += f"🏆 *Прорыв вечера:* {winner_names}\n"
-        result += "�    *Поздравляем победителей!*"
+        result += "🎉 *Поздравляем победителей!*"
         message = await bot.send_message(GROUP_ID, result, parse_mode="Markdown")
         await bot.pin_chat_message(chat_id=GROUP_ID, message_id=message.message_id, disable_notification=True)
         if voting_state.breakthrough_message_id:
@@ -1107,6 +1184,36 @@ async def remind_laggards(callback_query: types.CallbackQuery):
         await bot.send_message(GROUP_ID, f"🚀 Напоминание: {mentions}, пожалуйста, проголосуйте за 'Прорыв вечера'!")
         await bot.answer_callback_query(callback_query.id, "Уведомление отправлено!")
 
+@dp.callback_query(lambda c: c.data == 'user_voting_menu')
+async def user_voting_menu(callback_query: types.CallbackQuery):
+    user_id = callback_query.from_user.id
+    players_data = load_players()
+    user_participated = any(p['id'] == user_id and p['played_last_game'] for p in players_data['players'])
+    if not user_participated:
+        await bot.send_message(user_id, "❌ Вы не участвовали в последней игре и не можете голосовать!")
+        await bot.answer_callback_query(callback_query.id)
+        return
+    if voting_state.active:
+        if user_id in voting_state.voted_users:
+            await bot.send_message(user_id, "🏆 Вы уже завершили голосование за рейтинг!")
+        else:
+            keyboard = types.InlineKeyboardMarkup(inline_keyboard=[
+                [types.InlineKeyboardButton(text="Начать голосование за рейтинг", callback_data="start_voting_user")]
+            ])
+            await bot.send_message(user_id, "🏆 Голосование за рейтинг активно! Нажми, чтобы начать:", reply_markup=keyboard)
+    elif voting_state.breakthrough_active:
+        if user_id in voting_state.breakthrough_voted_users:
+            await bot.send_message(user_id, "🚀 Вы уже проголосовали за 'Прорыв вечера'!")
+        else:
+            players_data = load_players()
+            participants = [p for p in players_data['players'] if p['played_last_game']]
+            sorted_players = sorted(participants, key=lambda p: sum(r['score'] for r in p['ratings']) / max(1, len(p['ratings'])) if p['ratings'] else 0, reverse=True)
+            await send_breakthrough_voting_message(user_id, sorted_players)
+            await bot.send_message(user_id, "🚀 Голосование за 'Прорыв вечера' начато! Выбери одного игрока.")
+    else:
+        await bot.send_message(user_id, "❌ Нет активного голосования!")
+    await bot.answer_callback_query(callback_query.id)
+
 @dp.callback_query()
 async def default_callback_handler(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id, "Команда не распознана!")
@@ -1121,13 +1228,58 @@ async def on_startup(dispatcher):
     if not os.path.exists('players.json'):
         logger.info("players.json отсутствует локально, загружаем из GitHub")
         await fetch_players_from_github()
-    voting_state = load_voting_state()
+    if not os.path.exists(STATE_FILE):
+        logger.info("voting_state.json отсутствует локально, загружаем из GitHub")
+        voting_state = await fetch_voting_state_from_github()
+    else:
+        voting_state = load_voting_state()
+    logger.info("Загруженное состояние при старте: %s", voting_state.to_dict())
     if voting_state.active:
         logger.info("Обнаружено активное голосование за рейтинг при запуске")
-        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за рейтинг было активно. Проверьте состояние и уведомите участников, если нужно.")
+        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за рейтинг было активно. Оно восстановлено.")
+        if voting_state.voting_message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=GROUP_ID,
+                    message_id=voting_state.voting_message_id,
+                    text="🏆 Голосование за рейтинг началось! Участники, перейдите в ЛС для голосования:",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}?start=voting")]
+                    ])
+                )
+                await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
+            except Exception as e:
+                logger.error(f"Не удалось восстановить сообщение голосования: {e}")
+                new_message = await bot.send_message(GROUP_ID, "🏆 Голосование за рейтинг началось! Участники, перейдите в ЛС для голосования:",
+                                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                                                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}?start=voting")]
+                                                    ]))
+                voting_state.voting_message_id = new_message.message_id
+                await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
+                save_voting_state(voting_state)
     if voting_state.breakthrough_active:
         logger.info("Обнаружено активное голосование за 'Прорыв вечера' при запуске")
-        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за 'Прорыв вечера' было активно. Проверьте состояние и уведомите участников, если нужно.")
+        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за 'Прорыв вечера' было активно. Оно восстановлено.")
+        if voting_state.breakthrough_message_id:
+            try:
+                await bot.edit_message_text(
+                    chat_id=GROUP_ID,
+                    message_id=voting_state.breakthrough_message_id,
+                    text="🚀 Голосование за 'Прорыв вечера' началось! Участники, выберите героя в ЛС:",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}")]
+                    ])
+                )
+                await bot.pin_chat_message(GROUP_ID, voting_state.breakthrough_message_id, disable_notification=True)
+            except Exception as e:
+                logger.error(f"Не удалось восстановить сообщение 'Прорыва вечера': {e}")
+                new_message = await bot.send_message(GROUP_ID, "🚀 Голосование за 'Прорыв вечера' началось! Участники, выберите героя в ЛС:",
+                                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                                                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}")]
+                                                    ]))
+                voting_state.breakthrough_message_id = new_message.message_id
+                await bot.pin_chat_message(GROUP_ID, voting_state.breakthrough_message_id, disable_notification=True)
+                save_voting_state(voting_state)
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
