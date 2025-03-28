@@ -1,5 +1,5 @@
 {
-    "active": false,
+    "active": true,
     "breakthrough_active": false,
     "participants": [
         113405030,
@@ -10,12 +10,18 @@
         1944823446
     ],
     "excluded_players": [],
-    "voting_message_id": 349,
+    "voting_message_id": 353,
     "breakthrough_message_id": null,
-    "voted_users": [
-        113405030,
-        7660194671
-    ],
+    "voted_users": [],
     "breakthrough_voted_users": [],
-    "voting_messages": {}
+    "voting_messages": {
+        "113405030": [
+            1077,
+            1078,
+            1079,
+            1080,
+            1081,
+            1082
+        ]
+    }
 }
