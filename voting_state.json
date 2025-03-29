@@ -13,7 +13,8 @@
     "voting_message_id": 868,
     "breakthrough_message_id": null,
     "voted_users": [
-        771664527
+        771664527,
+        480892405
     ],
     "breakthrough_voted_users": [],
     "voting_messages": {
@@ -32,14 +33,6 @@
             1103,
             1104,
             1105
-        ],
-        "480892405": [
-            1381,
-            1382,
-            1383,
-            1384,
-            1385,
-            1386
         ]
     }
 }
