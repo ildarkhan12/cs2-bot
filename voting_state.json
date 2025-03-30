@@ -1,16 +1,12 @@
 {
     "active": false,
-    "breakthrough_active": true,
+    "breakthrough_active": false,
     "participants": [],
     "excluded_players": [],
     "voting_message_id": null,
-    "breakthrough_message_id": 933,
+    "breakthrough_message_id": null,
     "voted_users": [],
     "breakthrough_voted_users": [],
-    "voting_messages": {
-        "113405030": [
-            1438
-        ]
-    },
+    "voting_messages": {},
     "restart_notified": false
 }
