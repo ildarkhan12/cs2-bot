@@ -1071,10 +1071,20 @@ async def on_startup(dispatcher):
         voting_state = await fetch_voting_state_from_github()
     else:
         voting_state = load_voting_state()
-    if voting_state.active and not voting_state.restart_notified:
-        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за рейтинг было активно. Оно восстановлено.")
+    
+    # Уведомление только админу при перезапуске
+    if (voting_state.active or voting_state.breakthrough_active) and not voting_state.restart_notified:
+        message_text = (
+            "⚠️ Бот перезапустился.\n"
+            f"Голосование за рейтинг: {'активно' if voting_state.active else 'неактивно'}.\n"
+            f"Голосование за 'Прорыв вечера': {'активно' if voting_state.breakthrough_active else 'неактивно'}.\n"
+            "Состояние восстановлено."
+        )
+        await bot.send_message(ADMIN_ID, message_text)
         voting_state.restart_notified = True
-        if voting_state.voting_message_id:
+        
+        # Восстановление сообщения в группе для голосования за рейтинг
+        if voting_state.active and voting_state.voting_message_id:
             try:
                 await bot.edit_message_text(
                     chat_id=GROUP_ID,
@@ -1086,18 +1096,19 @@ async def on_startup(dispatcher):
                 )
                 await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
             except Exception as e:
-                logger.error(f"Не удалось восстановить сообщение: {e}")
-                new_message = await bot.send_message(GROUP_ID, "🏆 Голосование за рейтинг началось! Участники, перейдите в ЛС для голосования:",
-                                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
-                                                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}?start=voting")]
-                                                    ]))
+                logger.error(f"Не удалось восстановить сообщение для голосования за рейтинг: {e}")
+                new_message = await bot.send_message(
+                    GROUP_ID,
+                    "🏆 Голосование за рейтинг началось! Участники, перейдите в ЛС для голосования:",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}?start=voting")]
+                    ])
+                )
                 voting_state.voting_message_id = new_message.message_id
                 await bot.pin_chat_message(GROUP_ID, voting_state.voting_message_id, disable_notification=True)
-        save_voting_state(voting_state)
-    if voting_state.breakthrough_active and not voting_state.restart_notified:
-        await bot.send_message(ADMIN_ID, "⚠️ Бот перезапустился. Голосование за 'Прорыв вечера' было активно. Оно восстановлено.")
-        voting_state.restart_notified = True
-        if voting_state.breakthrough_message_id:
+        
+        # Восстановление сообщения в группе для "Прорыва вечера"
+        if voting_state.breakthrough_active and voting_state.breakthrough_message_id:
             try:
                 await bot.edit_message_text(
                     chat_id=GROUP_ID,
@@ -1109,14 +1120,19 @@ async def on_startup(dispatcher):
                 )
                 await bot.pin_chat_message(GROUP_ID, voting_state.breakthrough_message_id, disable_notification=True)
             except Exception as e:
-                logger.error(f"Не удалось восстановить сообщение: {e}")
-                new_message = await bot.send_message(GROUP_ID, "🚀 Голосование за 'Прорыв вечера' началось! Участники, выберите героя в ЛС:",
-                                                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
-                                                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}")]
-                                                    ]))
+                logger.error(f"Не удалось восстановить сообщение для 'Прорыва вечера': {e}")
+                new_message = await bot.send_message(
+                    GROUP_ID,
+                    "🚀 Голосование за 'Прорыв вечера' началось! Участники, выберите героя в ЛС:",
+                    reply_markup=types.InlineKeyboardMarkup(inline_keyboard=[
+                        [types.InlineKeyboardButton(text="Проголосовать", url=f"t.me/{BOT_USERNAME}")]
+                    ])
+                )
                 voting_state.breakthrough_message_id = new_message.message_id
                 await bot.pin_chat_message(GROUP_ID, voting_state.breakthrough_message_id, disable_notification=True)
+        
         save_voting_state(voting_state)
+    
     await bot.set_webhook(WEBHOOK_URL)
     logger.info("Бот запущен с вебхуком: %s", WEBHOOK_URL)
 
