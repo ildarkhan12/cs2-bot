@@ -2,7 +2,9 @@
     "active": false,
     "breakthrough_active": false,
     "participants": [],
-    "excluded_players": [],
+    "excluded_players": [
+        1944823446
+    ],
     "voting_message_id": null,
     "breakthrough_message_id": null,
     "voted_users": [],
