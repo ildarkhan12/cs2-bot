@@ -4,7 +4,7 @@
             "id": 113405030,
             "name": "Admin",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -14,7 +14,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 1,
+                "games_played": 2,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
@@ -23,7 +23,7 @@
             "id": 267576019,
             "name": "Lighthouse",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -33,7 +33,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 1,
+                "games_played": 2,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
@@ -42,7 +42,7 @@
             "id": 7660194671,
             "name": "test",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -52,7 +52,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 1,
+                "games_played": 2,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
@@ -61,7 +61,7 @@
             "id": 480892405,
             "name": "Fakha",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -71,7 +71,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 1,
+                "games_played": 2,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
@@ -80,7 +80,7 @@
             "id": 771664527,
             "name": "s6les",
             "ratings": [],
-            "played_last_game": false,
+            "played_last_game": true,
             "awards": {
                 "mvp": 0,
                 "place1": 0,
@@ -90,7 +90,7 @@
             },
             "stats": {
                 "mvp_count": 0,
-                "games_played": 1,
+                "games_played": 2,
                 "rank_points": 0,
                 "rank": "Рядовой"
             }
