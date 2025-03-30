@@ -13,16 +13,10 @@
     ],
     "voting_message_id": 936,
     "breakthrough_message_id": null,
-    "voted_users": [],
+    "voted_users": [
+        113405030
+    ],
     "breakthrough_voted_users": [],
-    "voting_messages": {
-        "113405030": [
-            1454,
-            1455,
-            1456,
-            1457,
-            1458
-        ]
-    },
+    "voting_messages": {},
     "restart_notified": false
 }
