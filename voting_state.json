@@ -1,23 +1,16 @@
 {
-    "active": true,
-    "breakthrough_active": false,
-    "participants": [
-        113405030,
-        267576019,
-        7660194671,
-        480892405,
-        771664527
-    ],
-    "excluded_players": [
-        1944823446
-    ],
-    "voting_message_id": 936,
-    "breakthrough_message_id": null,
-    "voted_users": [
-        113405030,
-        7660194671
-    ],
+    "active": false,
+    "breakthrough_active": true,
+    "participants": [],
+    "excluded_players": [],
+    "voting_message_id": null,
+    "breakthrough_message_id": 939,
+    "voted_users": [],
     "breakthrough_voted_users": [],
-    "voting_messages": {},
+    "voting_messages": {
+        "113405030": [
+            1474
+        ]
+    },
     "restart_notified": false
 }
